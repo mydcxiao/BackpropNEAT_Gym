@@ -23,6 +23,7 @@ Core algorithm tested with:
 
 - *Slime Volley Gym 0.1.0* (`pip install slimevolleygym` -- installation details [here](https://github.com/hardmaru/slimevolleygym)) (added for neural slime volleyball game)
 
+- *pyglet 1.5.11* (*can only be under this version*)
 
 Domains tested with:
 
