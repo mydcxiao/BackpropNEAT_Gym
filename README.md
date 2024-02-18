@@ -7,17 +7,21 @@ Neuroevolution of Augmenting Topologies (NEAT) algorithm in numpy, built for mul
 
 Original paper by Ken Stanley and Risto Miikkulainen: [Evolving Neural Networks Through Augmenting Topologies](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.28.5457&rep=rep1&type=pdf)
 
+## (*Update Feb 2024*)
+
 ## Dependencies
 
 Core algorithm tested with:
 
-- Python 3.5.3
+- Python 3.5.3 (*newer 3.11.7 works*)
 
-- NumPy 1.15.2 (`pip install numpy`)
+- NumPy 1.15.2 (`pip install numpy`) (*newer 1.26.4 works*)
 
-- mpi4py 3.0.1 (`pip install mpi4py`)
+- mpi4py 3.0.1 (`pip install mpi4py`) (*newer 3.1.4 works*)
 
-- OpenAI Gym 0.9.6 (`pip install gym` -- installation details [here](https://github.com/openai/gym))
+- OpenAI Gym 0.9.6 (`pip install gym` -- installation details [here](https://github.com/openai/gym)) (*can only be 0.9.6*)
+
+- *Slime Volley Gym 0.1.0* (`pip install slimevolleygym` -- installation details [here](https://github.com/hardmaru/slimevolleygym)) (added for neural slime volleyball game)
 
 
 Domains tested with:
@@ -34,6 +38,7 @@ Domains tested with:
     - Tensorflow 1.8 (`pip install tensorflow==1.8.0`)
     - Pretrained VAE (in [wannRelease](../) -- copy to root to use, e.g: `cp -r ../vae .`)
 
+- *Slime Volleyball*: 2d (similar to OpenAI Gym)
 
 To tune weights of produced network topologies
 
