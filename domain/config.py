@@ -184,7 +184,7 @@ slime_volley = Game(env_name='SlimeVolley-v0',
   weightCap = 2.0,
   noise_bias=0.0,
   output_noise=[False, False, False],
-  max_episode_length = 1000,
+  max_episode_length = 3000,
   in_out_labels = []
 )
 games['slimevolley'] = slime_volley
