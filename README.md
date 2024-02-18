@@ -17,7 +17,7 @@ Core algorithm tested with:
 
 - NumPy 1.15.2 (`pip install numpy`) (*newer 1.26.4 works*)
 
-- mpi4py 3.0.1 (`pip install mpi4py`) (*newer 3.1.4 works*)
+- mpi4py 3.0.1 (`pip install mpi4py`, sometimes not work, try `conda install mpi4py`) (*newer 3.1.4 works*)
 
 - OpenAI Gym 0.9.6 (`pip install gym` -- installation details [here](https://github.com/openai/gym)) (*can only be 0.9.6*)
 
