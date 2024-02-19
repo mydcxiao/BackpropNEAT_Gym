@@ -176,15 +176,18 @@ slime_volley = Game(env_name='SlimeVolley-v0',
   actionSelect='all', # all, soft, hard
   input_size=12,
   output_size=3,
-  layers=[20, 20],
+  layers=[64, 32],
   time_factor=0,
   i_act=np.full(12,1),
   h_act=[1,2,3,4,5,6,7,8,9,10],
-  o_act=np.full(3,1),
+  o_act=np.full(3,5),
   weightCap = 2.0,
   noise_bias=0.0,
   output_noise=[False, False, False],
   max_episode_length = 3000,
-  in_out_labels = []
+  in_out_labels = ["agent1_x","agent1_y","agent1_x_vel","agent1_y_vel", \
+                   "ball_x","ball_y","ball_x_vel","ball_y_vel", \
+                   "agent2_x","agent2_y","agent2_x_vel","agent2_y_vel", \
+                   "forward", "jump", "backward"]
 )
 games['slimevolley'] = slime_volley
