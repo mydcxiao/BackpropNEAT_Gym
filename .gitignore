@@ -5,3 +5,7 @@ neat-python/examples/**/*.gv
 neat-python/examples/**/*.svg
 neat-python/examples/**/winner*
 neat-python/examples/**/neat-checkpoint-*
+*.csv
+*.gv
+*.svg
+neat-checkpoint-*
