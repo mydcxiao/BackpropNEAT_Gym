@@ -9,3 +9,4 @@ neat-python/examples/**/neat-checkpoint-*
 *.gv
 *.svg
 neat-checkpoint-*
+__pycache__/
