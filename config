@@ -15,8 +15,8 @@ num_outputs             = 3
 initial_connection      = partial_direct 1.0
 feed_forward            = True
 compatibility_disjoint_coefficient = 1.0
-compatibility_weight_coefficient   = 0.5
-conn_add_prob           = 0.15
+compatibility_weight_coefficient   = 1.0
+conn_add_prob           = 0.25
 conn_delete_prob        = 0.05
 node_add_prob           = 0.15
 node_delete_prob        = 0.05
@@ -57,9 +57,9 @@ compatibility_threshold = 2.0
 [DefaultStagnation]
 species_fitness_func = max
 max_stagnation       = 15
-species_elitism      = 2
+species_elitism      = 0
 
 [DefaultReproduction]
-elitism            = 2
+elitism            = 0
 survival_threshold = 0.2
 

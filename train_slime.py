@@ -96,7 +96,7 @@ def run():
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
     # Checkpoint every 25 generations or 900 seconds.
-    pop.add_reporter(neat.Checkpointer(25, 900))
+    pop.add_reporter(neat.Checkpointer(100, None))
 
     # Run until the winner from a generation is able to solve the environment
     # or the user interrupts the process.
