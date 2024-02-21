@@ -1,5 +1,7 @@
 import numpy as np
-
+import jax
+import jax.numpy as jnp
+from jax import grad, jit, vmap
 
 # -- ANN Ordering -------------------------------------------------------- -- #
 
@@ -112,7 +114,7 @@ def getLayer(wMat):
 
 # -- ANN Activation ------------------------------------------------------ -- #
 
-def act(weights, aVec, nInput, nOutput, inPattern):
+def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None):
   """Returns FFANN output given a single input pattern
   If the variable weights is a vector it is turned into a square weight matrix.
   
@@ -134,36 +136,68 @@ def act(weights, aVec, nInput, nOutput, inPattern):
     output    - (np_array) - output activation
                 [1 X nOutput] or [nSamples X nOutput]
   """
+  if not backprop:
   # Turn weight vector into weight matrix
-  if np.ndim(weights) < 2:
-      nNodes = int(np.sqrt(np.shape(weights)[0]))
-      wMat = np.reshape(weights, (nNodes, nNodes))
-  else:
-      nNodes = np.shape(weights)[0]
-      wMat = weights
-  wMat[np.isnan(wMat)]=0
+    if np.ndim(weights) < 2:
+        nNodes = int(np.sqrt(np.shape(weights)[0]))
+        wMat = np.reshape(weights, (nNodes, nNodes))
+    else:
+        nNodes = np.shape(weights)[0]
+        wMat = weights
+    wMat[np.isnan(wMat)]=0
 
-  # Vectorize input
-  if np.ndim(inPattern) > 1:
-      nSamples = np.shape(inPattern)[0]
-  else:
-      nSamples = 1
+    # Vectorize input
+    if np.ndim(inPattern) > 1:
+        nSamples = np.shape(inPattern)[0]
+    else:
+        nSamples = 1
 
-  # Run input pattern through ANN    
-  nodeAct  = np.zeros((nSamples,nNodes))
-  nodeAct[:,0] = 1 # Bias activation
-  nodeAct[:,1:nInput+1] = inPattern
+    # Run input pattern through ANN    
+    nodeAct  = np.zeros((nSamples,nNodes))
+    nodeAct[:,0] = 1 # Bias activation
+    nodeAct[:,1:nInput+1] = inPattern
 
-  # Propagate signal through hidden to output nodes
-  iNode = nInput+1
-  for iNode in range(nInput+1,nNodes):
-      rawAct = np.dot(nodeAct, wMat[:,iNode]).squeeze()
-      nodeAct[:,iNode] = applyAct(aVec[iNode], rawAct) 
-      #print(nodeAct)
-  output = nodeAct[:,-nOutput:]   
-  return output
+    # Propagate signal through hidden to output nodes
+    iNode = nInput+1
+    for iNode in range(nInput+1,nNodes):
+        rawAct = np.dot(nodeAct, wMat[:,iNode]).squeeze()
+        nodeAct[:,iNode] = applyAct(aVec[iNode], rawAct) 
+        #print(nodeAct)
+    output = nodeAct[:,-nOutput:]   
+    return output
+  else:   
+    # def loss(weights, aVec, nInput, nOutput, inPattern, backprop, nNodes):
+    if jnp.ndim(weights) < 2:
+        # nNodes = int(jnp.sqrt(jnp.shape(weights)[0]))
+        wMat = jnp.reshape(weights, (nNodes, nNodes))
+    else:
+        # nNodes = jnp.shape(weights)[0]
+        wMat = weights
+    wMat = jnp.where(jnp.isnan(wMat), 0 , wMat)
 
-def applyAct(actId, x):
+    # # Vectorize input
+    if jnp.ndim(inPattern) > 1:
+        nSamples = jnp.shape(inPattern)[0]
+    else:
+        nSamples = 1
+    
+    # Run input pattern through ANN    
+    nodeAct  = jnp.zeros((nSamples,nNodes))
+    nodeAct = nodeAct.at[:,0].set(1) # Bias activation
+    nodeAct = nodeAct.at[:,1:nInput+1].set(inPattern)
+    # Propagate signal through hidden to output nodes
+    iNode = nInput+1
+    for iNode in range(nInput+1,nNodes):
+      rawAct = jnp.dot(nodeAct, wMat[:,iNode]).squeeze()
+      action = applyAct(aVec[iNode], rawAct, backprop=backprop)
+      # nodeAct.at[:,iNode].set(action)  # break the computational graph and cause zero grad
+      nodeAct = nodeAct.at[:,iNode].set(action)
+    output = nodeAct[:,-nOutput:]
+    # grads = jax.grad(loss)(weights, aVec, nInput, nOutput, inPattern, backprop, nNodes)
+    # print(type(grads), jnp.max(grads), jnp.min(grads))
+    return output
+
+def applyAct(actId, x, backprop=False):
   """Returns value after an activation function is applied
   Lookup table to allow activations to be stored in numpy arrays
 
@@ -188,49 +222,90 @@ def applyAct(actId, x):
     output  - (float) - value after activation is applied
               [? X ?] - same dimensionality as input
   """
-  if actId == 1:   # Linear
-    value = x
+  if not backprop:
+    if actId == 1:   # Linear
+      value = x
 
-  if actId == 2:   # Unsigned Step Function
-    value = 1.0*(x>0.0)
-    #value = (np.tanh(50*x/2.0) + 1.0)/2.0
+    if actId == 2:   # Unsigned Step Function
+      value = 1.0*(x>0.0)
+      #value = (np.tanh(50*x/2.0) + 1.0)/2.0
 
-  elif actId == 3: # Sin
-    value = np.sin(np.pi*x) 
+    elif actId == 3: # Sin
+      value = np.sin(np.pi*x) 
 
-  elif actId == 4: # Gaussian with mean 0 and sigma 1
-    value = np.exp(-np.multiply(x, x) / 2.0)
+    elif actId == 4: # Gaussian with mean 0 and sigma 1
+      value = np.exp(-np.multiply(x, x) / 2.0)
 
-  elif actId == 5: # Hyperbolic Tangent (signed)
-    value = np.tanh(x)     
+    elif actId == 5: # Hyperbolic Tangent (signed)
+      value = np.tanh(x)     
 
-  elif actId == 6: # Sigmoid (unsigned)
-    value = (np.tanh(x/2.0) + 1.0)/2.0
+    elif actId == 6: # Sigmoid (unsigned)
+      value = (np.tanh(x/2.0) + 1.0)/2.0
 
-  elif actId == 7: # Inverse
-    value = -x
+    elif actId == 7: # Inverse
+      value = -x
 
-  elif actId == 8: # Absolute Value
-    value = abs(x)   
-    
-  elif actId == 9: # Relu
-    value = np.maximum(0, x)   
+    elif actId == 8: # Absolute Value
+      value = abs(x)   
+      
+    elif actId == 9: # Relu
+      value = np.maximum(0, x)   
 
-  elif actId == 10: # Cosine
-    value = np.cos(np.pi*x)
+    elif actId == 10: # Cosine
+      value = np.cos(np.pi*x)
 
-  elif actId == 11: # Squared
-    value = x**2
-    
+    elif actId == 11: # Squared
+      value = x**2
+      
+    else:
+      value = x
+
+    return value
   else:
-    value = x
+    if actId == 1:   # Linear
+      value = x
 
-  return value
+    if actId == 2:   # Unsigned Step Function
+      value = 1.0*(x>0.0)
+      raise ValueError("Step function not differentiable")
+      #value = (np.tanh(50*x/2.0) + 1.0)/2.0
+
+    elif actId == 3: # Sin
+      value = jnp.sin(jnp.pi*x) 
+
+    elif actId == 4: # Gaussian with mean 0 and sigma 1
+      value = jnp.exp(-jnp.multiply(x, x) / 2.0)
+
+    elif actId == 5: # Hyperbolic Tangent (signed)
+      value = jnp.tanh(x)     
+
+    elif actId == 6: # Sigmoid (unsigned)
+      value = (jnp.tanh(x/2.0) + 1.0)/2.0
+
+    elif actId == 7: # Inverse
+      value = -x
+
+    elif actId == 8: # Absolute Value
+      value = jnp.abs(x)   
+      
+    elif actId == 9: # Relu
+      value = jnp.maximum(0, x)   
+
+    elif actId == 10: # Cosine
+      value = jnp.cos(jnp.pi*x)
+
+    elif actId == 11: # Squared
+      value = jnp.square(x)
+      
+    else:
+      value = x
+
+    return value
 
 
 # -- Action Selection ---------------------------------------------------- -- #
 
-def selectAct(action, actSelect):  
+def selectAct(action, actSelect, backprop=False):  
   """Selects action based on vector of actions
 
     Single Action:
@@ -250,13 +325,22 @@ def selectAct(action, actSelect):
     i         - (int) or (np_array)     - chosen index
                          [N X 1]
   """  
-  if actSelect == 'softmax':
-    action = softmax(action)
-  elif actSelect == 'prob':
-    action = weightedRandom(np.sum(action,axis=0))
+  if not backprop:
+    if actSelect == 'softmax':
+      action = softmax(action)
+    elif actSelect == 'prob':
+      action = weightedRandom(np.sum(action,axis=0))
+    else:
+      action = action.flatten()
+    return action
   else:
-    action = action.flatten()
-  return action
+    if actSelect == 'softmax':
+      action = jax.nn.softmax(action)
+    elif actSelect == 'sigmoid':
+      action = jax.nn.sigmoid(action)
+    else:
+      action = action
+    return action
 
 def softmax(x):
     """Compute softmax values for each sets of scores in x.

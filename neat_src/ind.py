@@ -72,6 +72,18 @@ class Ind():
       return True
     else:
       return False
+    
+  def impress(self, wVec):
+    order, _ = getNodeOrder(self.node, self.conn)
+    if order is not False:
+      self.wMat = wVec.reshape(np.shape(self.wMat))
+      self.wVec = copy.deepcopy(wVec)
+      node_perm = self.node[0,order]
+      for i in range(len(self.conn[0])):
+        self.conn[3,i] = self.wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
+      return True
+    else:
+      return False
 
   def createChild(self, p, innov, gen=0, mate=None):
     """Create new individual with this individual as a parent

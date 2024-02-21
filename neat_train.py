@@ -16,6 +16,10 @@ rank = comm.Get_rank()
 from neat_src import * # NEAT
 from domain import *   # Task environments
 
+import jax.numpy as jnp
+from jax import grad, jit, vmap
+from jax import device_get, device_put
+
 
 # -- Run NEAT ------------------------------------------------------------ -- #
 def master(): 
@@ -26,9 +30,13 @@ def master():
   neat = Neat(hyp)
 
   for gen in range(hyp['maxGen']):        
-    pop = neat.ask()            # Get newly evolved individuals from NEAT  
-    reward = batchMpiEval(pop)  # Send pop to be evaluated by workers
-    neat.tell(reward)           # Send fitness to NEAT    
+    pop = neat.ask()            # Get newly evolved individuals from NEAT
+    if 'backprop' not in hyp or not hyp['backprop']:     
+      reward = batchMpiEval(pop)
+      neat.tell(reward)           # Send fitness to NEAT    
+    else:                       
+      reward, wVec = batchMpiEval(pop, backprop=True)  # Send pop to be evaluated by workers
+      neat.tell(reward, wVec)           # Send fitness to NEAT    
 
     data = gatherData(data,neat,gen,hyp)
     print(gen, '\t - \t', data.display())
@@ -101,7 +109,7 @@ def checkBest(data):
 
 
 # -- Parallelization ----------------------------------------------------- -- #
-def batchMpiEval(pop, sameSeedForEachIndividual=True):
+def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False):
   """Sends population to workers for evaluation one batch at a time.
 
   Args:
@@ -130,6 +138,9 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True):
     seed = np.random.randint(1000)
 
   reward = np.empty(nJobs, dtype=np.float64)
+  if backprop:
+    wVecs = [None for _ in range(nJobs)]
+    wVecs_dims = [None for _ in range(nJobs)]
   i = 0 # Index of fitness we are filling
   for iBatch in range(nBatch): # Send one batch of individuals
     for iWork in range(nSlave): # (one to each worker if there)
@@ -138,7 +149,10 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True):
         n_wVec = np.shape(wVec)[0]
         aVec   = pop[i].aVec.flatten()
         n_aVec = np.shape(aVec)[0]
-
+        
+        if backprop:
+          wVecs_dims[i] = n_wVec
+        
         comm.send(n_wVec, dest=(iWork)+1, tag=1)
         comm.Send(  wVec, dest=(iWork)+1, tag=2)
         comm.send(n_aVec, dest=(iWork)+1, tag=3)
@@ -158,10 +172,17 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True):
     for iWork in range(1,nSlave+1):
       if i < nJobs:
         workResult = np.empty(1, dtype='d')
-        comm.Recv(workResult, source=iWork)
-        reward[i] = workResult
+        if backprop:
+          wVec = np.empty(wVecs_dims[i], dtype='d')
+          comm.Recv(workResult, source=iWork, tag=1)
+          reward[i] = workResult[0]
+          comm.Recv(wVec, source=iWork, tag=2)
+          wVecs[i] = wVec
+        else:
+          comm.Recv(workResult, source=iWork)
+          reward[i] = workResult[0]
       i+=1
-  return reward
+  return reward if not backprop else (reward, wVecs)
 
 def slave():
   """Evaluation process: evaluates networks sent from master process. 
@@ -192,9 +213,14 @@ def slave():
       aVec = np.empty(n_aVec, dtype='d')# allocate space to receive activation
       comm.Recv(aVec, source=0,  tag=4) # recieve it
       seed = comm.recv(source=0, tag=5) # random seed as int
-
+    
+    if 'backprop' not in hyp or not hyp['backprop']:
       result = task.getFitness(wVec, aVec) # process it
       comm.Send(result, dest=0)            # send it back
+    else:
+      result, wVec = task.getFitness(wVec, aVec, backprop=True)
+      comm.Send(result, dest=0, tag=1)      # send fitness back
+      comm.Send(wVec, dest=0, tag=2)        # send weight vector back
 
     if n_wVec < 0: # End signal recieved
       print('Worker # ', rank, ' shutting down.')

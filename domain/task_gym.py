@@ -3,7 +3,12 @@ import numpy as np
 import sys
 from domain.make_env import make_env
 from neat_src import *
-
+import jax
+import jax.numpy as jnp
+from jax import grad, jit, vmap
+from jax import device_get, device_put
+from jax.lax import stop_gradient
+from functools import partial
 
 class GymTask():
   """Problem domain to be solved by neural network. Uses OpenAI Gym patterns.
@@ -36,7 +41,7 @@ class GymTask():
     # Special needs...
     self.needsClosed = (game.env_name.startswith("CartPoleSwingUp"))    
   
-  def getFitness(self, wVec, aVec, hyp=None, view=False, nRep=False, seed=-1):
+  def getFitness(self, wVec, aVec, hyp=None, view=False, nRep=False, seed=-1, backprop=False, step_size=0.01):
     """Get fitness of a single individual.
   
     Args:
@@ -55,14 +60,25 @@ class GymTask():
     """
     if nRep is False:
       nRep = self.nReps
-    wVec[np.isnan(wVec)] = 0
-    reward = np.empty(nRep)
-    for iRep in range(nRep):
-      reward[iRep] = self.testInd(wVec, aVec, view=view, seed=seed+iRep)
-    fitness = np.mean(reward)
-    return fitness
+    if not backprop:
+      wVec[np.isnan(wVec)] = 0
+      reward = np.empty(nRep)
+      for iRep in range(nRep):
+        reward[iRep] = self.testInd(wVec, aVec, view=view, seed=seed+iRep)
+      fitness = np.mean(reward)
+      return fitness
+    else:
+      wVec = np.where(np.isnan(wVec), 0, wVec)
+      # wVec = jnp.array(wVec)
+      for iRep in range(nRep):
+        reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size)
+      # print(wVec.devices()) 
+      # wVec = np.asarray(wVec)
+      # wVec = device_get(wVec)
+      return reward, wVec
+        
 
-  def testInd(self, wVec, aVec, view=False,seed=-1):
+  def testInd(self, wVec, aVec, view=False,seed=-1, backprop=False, step_size=0.01):
     """Evaluate individual on task
     Args:
       wVec    - (np_array) - weight matrix as a flattened vector
@@ -77,39 +93,86 @@ class GymTask():
     Returns:
       fitness - (float)    - reward earned in trial
     """
-    if seed >= 0:
-      random.seed(seed)
-      np.random.seed(seed)
-      self.env.seed(seed)
-    state = self.env.reset()
-    self.env.t = 0
-    annOut = act(wVec, aVec, self.nInput, self.nOutput, state)  
-    action = selectAct(annOut,self.actSelect)    
-   
-    wVec[wVec!=0]
-    predName = str(np.mean(wVec[wVec!=0]))
-    state, reward, done, info = self.env.step(action)
+    if not backprop:
+      if seed >= 0:
+        random.seed(seed)
+        np.random.seed(seed)
+        self.env.seed(seed)
+      state = self.env.reset()
+      self.env.t = 0
+      annOut = act(wVec, aVec, self.nInput, self.nOutput, state)  
+      action = selectAct(annOut,self.actSelect)    
     
-    if self.maxEpisodeLength == 0:
-      if view:
-        if self.needsClosed:
-          self.env.render(close=done)  
-        else:
-          self.env.render()
-      return reward
-    else:
-      totalReward = reward
-    
-    for tStep in range(self.maxEpisodeLength): 
-      annOut = act(wVec, aVec, self.nInput, self.nOutput, state) 
-      action = selectAct(annOut,self.actSelect) 
+      wVec[wVec!=0]
+      predName = str(np.mean(wVec[wVec!=0]))
       state, reward, done, info = self.env.step(action)
-      totalReward += reward  
-      if view:
-        if self.needsClosed:
-          self.env.render(close=done)  
-        else:
-          self.env.render()
-      if done:
-        break
-    return totalReward
+      
+      if self.maxEpisodeLength == 0:
+        if view:
+          if self.needsClosed:
+            self.env.render(close=done)  
+          else:
+            self.env.render()
+        return reward
+      else:
+        totalReward = reward
+      
+      for tStep in range(self.maxEpisodeLength): 
+        annOut = act(wVec, aVec, self.nInput, self.nOutput, state) 
+        action = selectAct(annOut,self.actSelect) 
+        state, reward, done, info = self.env.step(action)
+        totalReward += reward  
+        if view:
+          if self.needsClosed:
+            self.env.render(close=done)  
+          else:
+            self.env.render()
+        if done:
+          break
+      return totalReward
+    else:
+      if seed >= 0:
+        random.seed(seed)
+        np.random.seed(seed)
+        self.env.seed(seed)
+      state = self.env.reset()
+      self.env.t = 0
+      
+      if jnp.ndim(wVec) < 2:
+        nNodes = int(jnp.sqrt(jnp.shape(wVec)[0]))
+      else:
+        nNodes = jnp.shape(wVec)[0]
+      
+      def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes):
+          annOut = act(wVec, aVec, input, output, state, backprop, nNodes)
+          action = selectAct(annOut, actSelect, backprop)
+          eps = 1e-10
+          loss = -jnp.mean(y * jnp.log(action + eps) + (1 - y) * jnp.log(1 - action + eps))
+          return loss
+           
+      loss = partial(forward, aVec=aVec, input=self.nInput, output=self.nOutput, actSelect=self.actSelect, backprop=backprop, nNodes=nNodes)
+      loss = jit(loss)
+      
+      connPenalty = 0.03
+      totalReward = 0
+      done = False
+      while not done:
+        y = self.env.get_labels()
+        wVec, state, y = device_put(wVec), device_put(state), device_put(y)
+        grads = grad(loss)(wVec, state=state, y=y).block_until_ready()
+        wVec = wVec - step_size * grads
+        print(grads.shape, jnp.max(grads), jnp.min(grads))
+        annOut = act(wVec, aVec, self.nInput, self.nOutput, state, backprop=backprop, nNodes=nNodes)
+        action = selectAct(annOut,self.actSelect, backprop=backprop)
+        action = device_get(action)
+        state, reward, done, info = self.env.step(action)
+        nConn = int(jnp.count_nonzero(wVec))
+        totalReward += reward * np.sqrt(connPenalty * nConn) 
+        if view:
+          if self.needsClosed:
+            self.env.render(close=done)  
+          else:
+            self.env.render()
+        if done:
+          break
+      return totalReward, device_get(wVec)

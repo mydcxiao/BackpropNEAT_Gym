@@ -52,7 +52,7 @@ class Neat():
 
     return self.pop       # Send child population for evaluation
 
-  def tell(self,reward):
+  def tell(self,reward, wVec=None):
     """Assigns fitness to current population
 
     Args:
@@ -63,6 +63,8 @@ class Neat():
     for i in range(np.shape(reward)[0]):
       self.pop[i].fitness = reward[i]
       self.pop[i].nConn   = self.pop[i].nConn
+      if wVec is not None:
+          self.pop[i].impress(wVec[i])
   
   def initPop(self):
     """Initialize population with a list of random individuals
@@ -75,7 +77,7 @@ class Neat():
     node = np.empty((3,len(nodeId)))
     node[0,:] = nodeId
     
-    # Node types: [1:input, 2:hidden, 3:bias, 4:output]
+    # Node types: [1:input, 2:output, 3:hidden, 4:bias]
     node[1,0]             = 4 # Bias
     node[1,1:p['ann_nInput']+1] = 1 # Input Nodes
     node[1,(p['ann_nInput']+1):\

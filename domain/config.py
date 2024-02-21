@@ -191,3 +191,23 @@ slime_volley = Game(env_name='SlimeVolley-v0',
                    "forward", "jump", "backward"]
 )
 games['slimevolley'] = slime_volley
+
+
+# -- backprop classification ----------------------------------------------------- -- #
+backprop_cls = Game(env_name='BackpropClassify',
+  actionSelect='sigmoid', # all, soft, hard
+  input_size=2,
+  output_size=1,
+  time_factor=0,
+  layers=[4, 4],
+  i_act=np.full(2,1),
+  h_act=[1,3,4,5,6,7,8,9,10,11],
+  o_act=np.full(1,1),
+  weightCap = 50.0,
+  noise_bias=0.0,
+  output_noise=[False, False, False],
+  max_episode_length = 0,
+  in_out_labels = ['x', 'y', 'prob']
+)
+games['backprop_XOR'] = backprop_cls._replace(env_name='BackpropXOR')
+games['backprop_sprial'] = backprop_cls._replace(env_name='BackpropSpiral')

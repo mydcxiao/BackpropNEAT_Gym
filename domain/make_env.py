@@ -53,6 +53,19 @@ def make_env(env_name, seed=-1, render_mode=False):
     if (env_name.startswith("CartPoleSwingUp_Hard")):
       env.dt = 0.01
       env.t_limit = 200
+      
+  # -- Backprop Classify --------------------------------------------- -- #
+  elif (env_name.startswith("Backprop")):
+    from domain.backprop_gym import BackpropClassifyEnv
+    if env_name.endswith("XOR"):
+      from domain.backprop_gym import XOR
+      trainSet, target  = XOR()
+      
+    if env_name.endswith("spiral"):
+      from domain.backprop_gym import spiral
+      trainSet, target  = spiral()
+    
+    env = BackpropClassifyEnv(trainSet, target)
 
   # -- Other  -------------------------------------------------------- -- #
   else:
