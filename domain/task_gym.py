@@ -5,7 +5,7 @@ from domain.make_env import make_env
 from neat_src import *
 import jax
 import jax.numpy as jnp
-from jax import grad, jit, vmap
+from jax import grad, jit, vmap, value_and_grad
 from jax import device_get, device_put
 from jax.lax import stop_gradient
 from functools import partial
@@ -146,7 +146,7 @@ class GymTask():
       def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes):
           annOut = act(wVec, aVec, input, output, state, backprop, nNodes)
           action = selectAct(annOut, actSelect, backprop)
-          eps = 1e-10
+          eps = 1e-8
           loss = -jnp.mean(y * jnp.log(action + eps) + (1 - y) * jnp.log(1 - action + eps))
           return loss
            
@@ -159,15 +159,16 @@ class GymTask():
       while not done:
         y = self.env.get_labels()
         wVec, state, y = device_put(wVec), device_put(state), device_put(y)
-        grads = grad(loss)(wVec, state=state, y=y).block_until_ready()
+        # grads = grad(loss)(wVec, state=state, y=y).block_until_ready()
+        action, grads = value_and_grad(loss)(wVec, state=state, y=y)
         wVec = wVec - step_size * grads
-        print(grads.shape, jnp.max(grads), jnp.min(grads))
-        annOut = act(wVec, aVec, self.nInput, self.nOutput, state, backprop=backprop, nNodes=nNodes)
-        action = selectAct(annOut,self.actSelect, backprop=backprop)
+        # print(grads.shape, jnp.max(grads), jnp.min(grads))
+        # annOut = act(wVec, aVec, self.nInput, self.nOutput, state, backprop=backprop, nNodes=nNodes)
+        # action = selectAct(annOut,self.actSelect, backprop=backprop)
         action = device_get(action)
         state, reward, done, info = self.env.step(action)
         nConn = int(jnp.count_nonzero(wVec))
-        totalReward += reward * np.sqrt(connPenalty * nConn) 
+        totalReward += -reward * np.sqrt(1+connPenalty * nConn) 
         if view:
           if self.needsClosed:
             self.env.render(close=done)  

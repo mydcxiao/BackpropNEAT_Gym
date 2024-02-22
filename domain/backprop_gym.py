@@ -66,11 +66,13 @@ class BackpropClassifyEnv(gym.Env):
     Judge Classification, increment to next batch
     action - [batch x output] - softmax output
     '''
-    y = self.target[self.currIndx]
+    # y = self.target[self.currIndx]
 
-    eps = 1e-10
-    loss = -np.mean(y * np.log(action + eps) + (1 - y) * np.log(1 - action + eps))
-    reward = -loss
+    # eps = 1e-10
+    # loss = -np.mean(y * np.log(action + eps) + (1 - y) * np.log(1 - action + eps))
+    # reward = -loss
+    
+    reward = action
 
     if self.t_limit > 0: # We are doing batches
       reward *= (1/self.t_limit) # average
