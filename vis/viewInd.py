@@ -102,7 +102,7 @@ def getNodeCoord(G,layer,taskName):
     
     return pos
   
-def labelInOut(pos, env):
+def labelInOut(pos, env, ax=None):
   nIn  = env.input_size+1
   nOut = env.output_size 
   nNode= len(pos)
@@ -115,23 +115,31 @@ def labelInOut(pos, env):
         labelDict[fixed_nodes[i]] = stateLabels[i]
       
   for i in range(nIn):
-    plt.annotate(labelDict[i], xy=(pos[i][0]-0.5, pos[i][1]), xytext=(pos[i][0]-2.5, pos[i][1]-0.5),\
-               arrowprops=dict(arrowstyle="->",color='k',connectionstyle="angle"))
+    if not ax:
+      plt.annotate(labelDict[i], xy=(pos[i][0]-0.5, pos[i][1]), xytext=(pos[i][0]-2.5, pos[i][1]-0.5),\
+                arrowprops=dict(arrowstyle="->",color='k',connectionstyle="angle"))
+    else:
+      ax.annotate(labelDict[i], xy=(pos[i][0]-0.5, pos[i][1]), xytext=(pos[i][0]-2.5, pos[i][1]-0.5),\
+                arrowprops=dict(arrowstyle="->",color='k',connectionstyle="angle"))
 
   for i in range(nNode-nOut,nNode):
-    plt.annotate(labelDict[i], xy=(pos[i][0]+0.1, pos[i][1]), xytext=(pos[i][0]+1.5, pos[i][1]+1.0),\
-               arrowprops=dict(arrowstyle="<-",color='k',connectionstyle="angle"))
+    if not ax:
+      plt.annotate(labelDict[i], xy=(pos[i][0]+0.1, pos[i][1]), xytext=(pos[i][0]+1.5, pos[i][1]+1.0),\
+                arrowprops=dict(arrowstyle="<-",color='k',connectionstyle="angle"))
+    else:
+      ax.annotate(labelDict[i], xy=(pos[i][0]+0.1, pos[i][1]), xytext=(pos[i][0]+1.5, pos[i][1]+1.0),\
+                arrowprops=dict(arrowstyle="<-",color='k',connectionstyle="angle"))
 
     
-def drawNodeLabels(G, pos, aVec):  
+def drawNodeLabels(G, pos, aVec, ax=None):  
   actLabel = np.array((['','( + )','(0/1)','(sin)','(gau)','(tanh)',\
                         '(sig)','( - )', '(abs)','(relu)','(cos)','(sqr)']))
   listLabel = actLabel[aVec.astype(int)]  
   label = dict(enumerate(listLabel))
-  nx.draw_networkx_labels(G,pos,labels=label)  
+  nx.draw_networkx_labels(G,pos,labels=label, ax=ax)  
   
   
-def drawEdge(G, pos, wMat, layer):
+def drawEdge(G, pos, wMat, layer, ax=None):
     wMat[np.isnan(wMat)]=0
     # Organize edges by layer
     _, nPerLayer = np.unique(layer, return_counts=True)
@@ -154,7 +162,7 @@ def drawEdge(G, pos, wMat, layer):
       C = [i/len(edgeLayer)] * len(edgeLayer[i].edges) 
       nx.draw_networkx_edges(G,pos,edgelist=edgeLayer[i].edges,\
         alpha=.75,width=1.0,edge_color=C,edge_cmap=plt.cm.viridis,\
-        edge_vmin=0.0, edge_vmax=1.0,arrowsize=8)
+        edge_vmin=0.0, edge_vmax=1.0,arrowsize=8, ax=ax)
 
 def getLayer(wMat):
   '''

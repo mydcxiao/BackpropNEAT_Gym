@@ -36,14 +36,15 @@ def viewClassifier(ind, taskName, seed=None):
     
     # TODO: merge graph visualization into one figure
     # Draw Graph
-    fig = plt.figure(figsize=(20,10), dpi=300)
-    ax1 = fig.add_subplot(122)
-    drawEdge(G, pos, wMat, layer)
+    # fig = plt.figure(figsize=(20,10), dpi=100)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10), dpi=100)
+    # ax1 = fig.add_subplot(122)
+    drawEdge(G, pos, wMat, layer, ax1)
     nx.draw_networkx_nodes(G,pos,\
         node_color='lightblue',node_shape='o',\
-        cmap='terrain',vmin=0,vmax=6)
-    drawNodeLabels(G,pos,aVec) 
-    labelInOut(pos,env)
+        cmap='terrain',vmin=0,vmax=6, ax=ax1)
+    drawNodeLabels(G,pos,aVec, ax1) 
+    labelInOut(pos,env, ax1)
   
     ax1.tick_params(
         axis='both',       # changes apply to the x-axis
@@ -54,37 +55,37 @@ def viewClassifier(ind, taskName, seed=None):
         labelleft=False,
         labelbottom=False) # labels along the bottom edge are off
     
-    ax2 = fig.add_subplot(111)
+    # ax2 = fig.add_subplot(111)
     # Prepare mesh and predictions as before
     task.env._generate_data(seed=seed)
     X, y = task.env.trainSet, task.env.target
     
     # Predict logits
-    annOut = act(wMat, aVec, task.env.input_size, task.env.output_size, X)
-    action = selectAct(annOut, task.env.actSelect)
+    annOut = act(wMat, aVec, task.nInput, task.nOutput, X)
+    action = selectAct(annOut, task.actSelect)
     pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
     test_acc = np.mean(pred == y)
     
     xx, yy = np.meshgrid(np.linspace(X[:, 0].min(), X[:, 0].max(), num=200),
                          np.linspace(X[:, 1].min(), X[:, 1].max(), num=200))
-    pred_contour = selectAct(act(wMat, aVec, task.env.input_size, task.env.output_size, np.c_[xx.ravel(), yy.ravel()]), task.env.actSelect)
+    pred_contour = selectAct(act(wMat, aVec, task.nInput, task.nOutput, np.c_[xx.ravel(), yy.ravel()]), task.actSelect)
     pred_contour = np.where(pred_contour > 0.5, 1, 0).reshape(xx.shape)
     
     pos_idx = np.where(y == 0)[0]
     neg_idx = np.where(y == 1)[0]
 
     # Plot setup as before
-    ax2.contourf(xx, yy, pred_contour, alpha=0.8, cmap=plt.cm.coolwarm)
-    ax2.scatter(X[pos_idx, 0], X[pos_idx, 1], c=y[pos_idx], marker='o', edgecolors='k', cmap=plt.cm.coolwarm)
-    ax2.scatter(X[neg_idx, 0], X[neg_idx, 1], c=y[neg_idx], marker='o', edgecolors='k', cmap=plt.cm.coolwarm)
+    ax2.contourf(xx, yy, pred_contour, alpha=0.8, levels=np.linspace(0, 1, 11), cmap=plt.cm.coolwarm)
+    ax2.scatter(X[pos_idx, 0], X[pos_idx, 1], c='r', marker='o', edgecolors='k')
+    ax2.scatter(X[neg_idx, 0], X[neg_idx, 1], c='b', marker='o', edgecolors='k')
     # train_accuracy = classifier.score(X_train, y_train)
     # plt.text(xx.min() + 0.3, yy.min() + 0.3, f'Train accuracy = {train_accuracy * 100:.1f}%', fontsize=12)
     ax2.text(xx.min() + 0.3, yy.min() + 0.7, f'Test accuracy = {test_acc * 100:.1f}%', fontsize=12)
-    ax2.title('2D Classification with Decision Boundary')
-    ax2.xlabel('X')
-    ax2.ylabel('Y')
-    ax2.xlim(xx.min(), xx.max())
-    ax2.ylim(yy.min(), yy.max())
+    ax2.set_title('2D Classification with Decision Boundary')
+    ax2.set_xlabel('X')
+    ax2.set_ylabel('Y')
+    ax2.set_xlim(xx.min(), xx.max())
+    ax2.set_ylim(yy.min(), yy.max())
 
     # Save the plot to a bytes buffer
     # buf = io.BytesIO()
