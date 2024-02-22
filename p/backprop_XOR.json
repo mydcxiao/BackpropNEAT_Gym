@@ -24,7 +24,7 @@
     "spec_threshMin": 2.0,
     "spec_geneCoef": 1,
     "spec_weightCoef": 0,
-    "save_mod": 8,
+    "save_mod": 1,
     "bestReps": 20,
     "backprop": true
 }
