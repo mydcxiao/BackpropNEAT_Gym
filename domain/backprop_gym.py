@@ -17,7 +17,7 @@ class BackpropClassifyEnv(gym.Env):
   """Classification as an unsupervised OpenAI Gym RL problem.
   """
 
-  def __init__(self, trainSet, target):
+  def __init__(self, trainSet=None, target=None, type=None, seed=None):
     """
     Data set is a tuple of 
     [0] input data: [nSamples x nInputs]
@@ -28,14 +28,17 @@ class BackpropClassifyEnv(gym.Env):
 
     self.t = 0          # Current batch number
     self.t_limit = 0    # Number of batches if you need them
-    self.batch   = 200 # Number of images per batch
+    self.batch   = 10 # Number of images per batch
     self.seed()
     self.viewer = None
 
     self.trainSet = trainSet
     self.target   = target
-
-    nInputs = np.shape(trainSet)[1]
+    
+    if type:
+      self._generate_data(seed=seed)
+    
+    nInputs = np.shape(self.trainSet)[1]
     high = np.array([1.0]*nInputs)
     self.action_space = spaces.Box(np.array(0,dtype=np.float32), \
                                    np.array(1,dtype=np.float32))
@@ -56,7 +59,7 @@ class BackpropClassifyEnv(gym.Env):
     #print('Lucky number', np.random.randint(10)) # same randomness?
     self.trainOrder = np.random.permutation(len(self.target))
     self.t = 0 # timestep
-    self.t_limit = self.target.shape[0]//self.batch - 1
+    self.t_limit = self.target.shape[0]//self.batch
     self.currIndx = self.trainOrder[self.t:self.t+self.batch]
     self.state = self.trainSet[self.currIndx,:]
     return self.state
@@ -75,7 +78,7 @@ class BackpropClassifyEnv(gym.Env):
     reward = action
 
     if self.t_limit > 0: # We are doing batches
-      reward *= (1/self.t_limit) # average
+      # reward = reward * (1/self.t_limit) # average
       self.t += 1
       done = False
       if self.t >= self.t_limit:
@@ -93,17 +96,26 @@ class BackpropClassifyEnv(gym.Env):
   def get_labels(self):
     return self.target[self.currIndx]
   
-  def render(self, weight, mode='rgb_array', close=False):
-    #TODO - render the diagram and save it to gif
-    return None
-
-
+  def _generate_data(self, type='XOR', num=None, noise=None, seed=None):
+    if type == 'XOR':
+      self.trainSet, self.target = XOR(num, noise, seed)
+    elif type == 'spiral':
+      self.trainSet, self.target = spiral(num, noise, seed)
+    elif type == 'gaussian':
+      self.trainSet, self.target = gaussian(num, noise, seed)
+    elif type == 'circle':
+      self.trainSet, self.target = circle(num, noise, seed)
+    else:
+      raise ValueError('Unknown data set type')
+    
+  
 # -- Data Sets ----------------------------------------------------------- -- #
 
-def XOR(num=None, noise=None):
+def XOR(num=None, noise=None, seed=None):
     ''' 
     XOR data set
     '''
+    if seed: np.random.seed(seed)
     if num == None: num = 200
     if noise == None: noise = 0.5
     x = np.random.uniform(-5,5,size=(num, 2))
@@ -113,10 +125,11 @@ def XOR(num=None, noise=None):
     y[np.where((x[:,0]<0)&(x[:,1]<0))[0]] = 1
     return x, y.reshape(-1,1)
 
-def spiral(num=None, noise=None):
+def spiral(num=None, noise=None, seed=None):
     ''' 
     Spiral data set
     '''
+    if seed: np.random.seed(seed)
     if num == None: num = 200
     if noise == None: noise = 0.5
     r = np.linspace(0,1,num//2, endpoint=False) * 6.0
@@ -129,10 +142,11 @@ def spiral(num=None, noise=None):
     y[num//2:] = 1
     return x, y.reshape(-1,1)
   
-def gaussian(num=None, noise=None):
+def gaussian(num=None, noise=None, seed=None):
     ''' 
     Gaussian data set
     '''
+    if seed: np.random.seed(seed)
     if num == None: num = 200
     if noise == None: noise = 0.5
     xp = np.random.normal((2,2),noise+1,(num//2,2))
@@ -142,10 +156,11 @@ def gaussian(num=None, noise=None):
     y[:num//2] = 1
     return x, y.reshape(-1,1)
 
-def circle(num=None, noise=None):
+def circle(num=None, noise=None, seed=None):
     ''' 
     Circle data set
     '''
+    if seed: np.random.seed(seed)
     if num == None: num = 200
     if noise == None: noise = 0.5
     radius = 5.0

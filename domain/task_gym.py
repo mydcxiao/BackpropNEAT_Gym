@@ -9,6 +9,7 @@ from jax import grad, jit, vmap, value_and_grad
 from jax import device_get, device_put
 from jax.lax import stop_gradient
 from functools import partial
+import gc
 
 class GymTask():
   """Problem domain to be solved by neural network. Uses OpenAI Gym patterns.
@@ -41,7 +42,7 @@ class GymTask():
     # Special needs...
     self.needsClosed = (game.env_name.startswith("CartPoleSwingUp"))    
   
-  def getFitness(self, wVec, aVec, hyp=None, view=False, nRep=False, seed=-1, backprop=False, step_size=0.01):
+  def getFitness(self, wVec, aVec, hyp=None, view=False, nRep=False, seed=-1, backprop=False, step_size=0.01, backprop_eval=False):
     """Get fitness of a single individual.
   
     Args:
@@ -69,16 +70,13 @@ class GymTask():
       return fitness
     else:
       wVec = np.where(np.isnan(wVec), 0, wVec)
-      # wVec = jnp.array(wVec)
       for iRep in range(nRep):
-        reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size)
-      # print(wVec.devices()) 
-      # wVec = np.asarray(wVec)
-      # wVec = device_get(wVec)
+        reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size, backprop_eval=backprop_eval)
+        print(f'Epoch:{iRep}:',reward)
       return reward, wVec
         
 
-  def testInd(self, wVec, aVec, view=False,seed=-1, backprop=False, step_size=0.01):
+  def testInd(self, wVec, aVec, view=False,seed=-1, backprop=False, step_size=0.01, backprop_eval=False):
     """Evaluate individual on task
     Args:
       wVec    - (np_array) - weight matrix as a flattened vector
@@ -135,45 +133,80 @@ class GymTask():
         random.seed(seed)
         np.random.seed(seed)
         self.env.seed(seed)
-      state = self.env.reset()
-      self.env.t = 0
-      
-      if jnp.ndim(wVec) < 2:
-        nNodes = int(jnp.sqrt(jnp.shape(wVec)[0]))
-      else:
-        nNodes = jnp.shape(wVec)[0]
-      
-      def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes):
-          annOut = act(wVec, aVec, input, output, state, backprop, nNodes)
-          action = selectAct(annOut, actSelect, backprop)
-          eps = 1e-8
-          loss = -jnp.mean(y * jnp.log(action + eps) + (1 - y) * jnp.log(1 - action + eps))
-          return loss
-           
-      loss = partial(forward, aVec=aVec, input=self.nInput, output=self.nOutput, actSelect=self.actSelect, backprop=backprop, nNodes=nNodes)
-      loss = jit(loss)
       
       connPenalty = 0.03
-      totalReward = 0
-      done = False
-      while not done:
+      
+      if backprop_eval:
+        self.env.batch = self.env.trainSet.shape[0]
+        state = self.env.reset()
+        self.env.t = 0
+        annOut = act(wVec, aVec, self.nInput, self.nOutput, state)
+        action = selectAct(annOut, self.actSelect)
         y = self.env.get_labels()
-        wVec, state, y = device_put(wVec), device_put(state), device_put(y)
-        # grads = grad(loss)(wVec, state=state, y=y).block_until_ready()
-        action, grads = value_and_grad(loss)(wVec, state=state, y=y)
-        wVec = wVec - step_size * grads
-        # print(grads.shape, jnp.max(grads), jnp.min(grads))
-        # annOut = act(wVec, aVec, self.nInput, self.nOutput, state, backprop=backprop, nNodes=nNodes)
-        # action = selectAct(annOut,self.actSelect, backprop=backprop)
-        action = device_get(action)
-        state, reward, done, info = self.env.step(action)
-        nConn = int(jnp.count_nonzero(wVec))
-        totalReward += -reward * np.sqrt(1+connPenalty * nConn) 
-        if view:
-          if self.needsClosed:
-            self.env.render(close=done)  
-          else:
-            self.env.render()
-        if done:
-          break
-      return totalReward, device_get(wVec)
+        pred = np.where(action > 0.5, 1, 0)
+        # eps = 1e-8
+        # loss = -np.mean(y * np.log(action + eps) + (1 - y) * np.log(1 - action +eps))
+        error = np.sum(np.abs(pred - y))
+        nConn = np.count_nonzero(wVec)
+        totalReward = -loss * np.sqrt(1+connPenalty * nConn)
+        return totalReward
+      
+      else:
+        state = self.env.reset()
+        self.env.t = 0
+        
+        if jnp.ndim(wVec) < 2:
+          nNodes = int(jnp.sqrt(jnp.shape(wVec)[0]))
+        else:
+          nNodes = int(jnp.shape(wVec)[0])
+        
+        def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes):
+            annOut = act(wVec, aVec, input, output, state, backprop, nNodes)
+            action = selectAct(annOut, actSelect, backprop)
+            action = action.reshape(-1, 1)
+            eps = 1e-8
+            loss = -jnp.mean(y * jnp.log(action + eps) + (1 - y) * jnp.log(1 - action + eps))
+            return loss
+            
+        loss = partial(forward, aVec=aVec, input=self.nInput, output=self.nOutput, actSelect=self.actSelect, backprop=backprop, nNodes=nNodes)
+        loss = jit(loss)
+        
+        totalReward = 0
+        done = False
+        avg_vel = 0
+        step_size = 0.01
+        alpha = 0.99
+        eps = 1e-8
+        while not done:
+          y = self.env.get_labels()
+          wVec, state, y = device_put(wVec), device_put(state), device_put(y)
+          # action, grads = value_and_grad(loss)(wVec, state=state, y=y)
+          grads = grad(loss)(wVec, state=state, y=y)
+          avg_vel = alpha * avg_vel + (1 - alpha) * jnp.square(grads)
+          wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.square(avg_vel)) + eps))
+          # wVec = wVec - step_size * grads
+          # print(grads.shape, jnp.max(grads), jnp.min(grads))
+          # action = device_get(action)
+          state, _, done, _ = self.env.step(None)
+          if view:
+            if self.needsClosed:
+              self.env.render(close=done)  
+            else:
+              self.env.render()
+          if done:
+            state = self.env.trainSet
+            y = self.env.target
+            wVec = device_get(wVec).copy()
+            nConn = int(np.count_nonzero(wVec))
+            annOut = act(wVec, aVec, self.nInput, self.nOutput, state, False, nNodes)
+            action = selectAct(annOut, self.actSelect, False)
+            pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
+            error = np.sum(np.abs(pred - y))
+            # print(nConn)
+            # print(error)
+            totalReward = -error * np.sqrt(1+connPenalty * nConn)
+            break
+          del y, grads
+          gc.collect()
+          jax.clear_caches()
+        return totalReward, wVec

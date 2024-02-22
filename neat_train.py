@@ -16,10 +16,6 @@ rank = comm.Get_rank()
 from neat_src import * # NEAT
 from domain import *   # Task environments
 
-import jax.numpy as jnp
-from jax import grad, jit, vmap
-from jax import device_get, device_put
-
 
 # -- Run NEAT ------------------------------------------------------------ -- #
 def master(): 
@@ -63,7 +59,7 @@ def gatherData(data,neat,gen,hyp,savePop=False):
     data - (DataGatherer) - updated run data
   """
   data.gatherData(neat.pop, neat.species)
-  if (gen%hyp['save_mod']) is 0:
+  if (gen%hyp['save_mod']) == 0:
     data = checkBest(data)
     data.save(gen)
 
@@ -94,7 +90,7 @@ def checkBest(data):
   if data.newBest is True:
     bestReps = max(hyp['bestReps'], (nWorker-1))
     rep = np.tile(data.best[-1], bestReps)
-    fitVector = batchMpiEval(rep, sameSeedForEachIndividual=False)
+    fitVector = batchMpiEval(rep, sameSeedForEachIndividual=False, backprop='backprop' in hyp and hyp['backprop'], backprop_eval=True)
     trueFit = np.mean(fitVector)
     if trueFit > data.best[-2].fitness:  # Actually better!      
       data.best[-1].fitness = trueFit
@@ -109,7 +105,7 @@ def checkBest(data):
 
 
 # -- Parallelization ----------------------------------------------------- -- #
-def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False):
+def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False, backprop_eval=False):
   """Sends population to workers for evaluation one batch at a time.
 
   Args:
@@ -141,6 +137,10 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False):
   if backprop:
     wVecs = [None for _ in range(nJobs)]
     wVecs_dims = [None for _ in range(nJobs)]
+    if backprop_eval:
+      flag = True
+    else:
+      flag = False
   i = 0 # Index of fitness we are filling
   for iBatch in range(nBatch): # Send one batch of individuals
     for iWork in range(nSlave): # (one to each worker if there)
@@ -160,8 +160,10 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False):
         if sameSeedForEachIndividual is False:
           comm.send(seed.item(i), dest=(iWork)+1, tag=5)
         else:
-          comm.send(  seed, dest=(iWork)+1, tag=5)  
-
+          comm.send(  seed, dest=(iWork)+1, tag=5)
+        if backprop:
+          comm.send(flag, dest=(iWork)+1, tag=6)  
+        
       else: # message size of 0 is signal to shutdown workers
         n_wVec = 0
         comm.send(n_wVec,  dest=(iWork)+1)
@@ -172,7 +174,7 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False):
     for iWork in range(1,nSlave+1):
       if i < nJobs:
         workResult = np.empty(1, dtype='d')
-        if backprop:
+        if backprop and not backprop_eval:
           wVec = np.empty(wVecs_dims[i], dtype='d')
           comm.Recv(workResult, source=iWork, tag=1)
           reward[i] = workResult[0]
@@ -182,7 +184,7 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False):
           comm.Recv(workResult, source=iWork)
           reward[i] = workResult[0]
       i+=1
-  return reward if not backprop else (reward, wVecs)
+  return reward if not backprop or (backprop and backprop_eval) else (reward, wVecs)
 
 def slave():
   """Evaluation process: evaluates networks sent from master process. 
@@ -199,7 +201,7 @@ def slave():
   PseudoReturn (sent to master):
     result - (float)    - fitness value of network
   """
-  global hyp  
+  global hyp
   task = GymTask(games[hyp['task']], nReps=hyp['alg_nReps'])
 
   # Evaluate any weight vectors sent this way
@@ -214,13 +216,18 @@ def slave():
       comm.Recv(aVec, source=0,  tag=4) # recieve it
       seed = comm.recv(source=0, tag=5) # random seed as int
     
-    if 'backprop' not in hyp or not hyp['backprop']:
-      result = task.getFitness(wVec, aVec) # process it
-      comm.Send(result, dest=0)            # send it back
-    else:
-      result, wVec = task.getFitness(wVec, aVec, backprop=True)
-      comm.Send(result, dest=0, tag=1)      # send fitness back
-      comm.Send(wVec, dest=0, tag=2)        # send weight vector back
+      if 'backprop' not in hyp or not hyp['backprop']:
+        result = task.getFitness(wVec, aVec) # process it
+        comm.Send(result, dest=0)            # send it back
+      else:
+        backprop_eval = comm.recv(source=0, tag=6)
+        if not backprop_eval:
+          result, wVec = task.getFitness(wVec, aVec, backprop=True)
+          comm.Send(result, dest=0, tag=1)      # send fitness back
+          comm.Send(wVec, dest=0, tag=2)        # send weight vector back
+        else:
+          result = task.getFitness(wVec, aVec, backprop=True, backprop_eval=True)
+          comm.Send(result, dest=0)      # send fitness back
 
     if n_wVec < 0: # End signal recieved
       print('Worker # ', rank, ' shutting down.')

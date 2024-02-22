@@ -211,3 +211,5 @@ backprop_cls = Game(env_name='BackpropClassify',
 )
 games['backprop_XOR'] = backprop_cls._replace(env_name='BackpropXOR')
 games['backprop_sprial'] = backprop_cls._replace(env_name='BackpropSpiral')
+games['backprop_gaussian'] = backprop_cls._replace(env_name='BackpropGaussian')
+games['backprop_circle'] = backprop_cls._replace(env_name='BackpropCircle')
