@@ -84,7 +84,11 @@ class Ind():
       # self.wVec = copy.deepcopy(wVec)
       node_perm = self.node[0,order]
       for i in range(len(self.conn[0])):
-        self.conn[3,i] = wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
+        value = wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
+        if self.conn[4,i] == 1 and value == 0:
+          self.conn[3,i] = 1e-8
+        else:
+          self.conn[3,i] = value
       assert self.express(), 'Impress failed'
       return True
     else:
