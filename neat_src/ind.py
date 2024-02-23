@@ -76,7 +76,7 @@ class Ind():
   def impress(self, wVec):
     order, _ = getNodeOrder(self.node, self.conn)
     if order is not False:
-      self.wMat = wVec.reshape(np.shape(self.wMat))
+      self.wMat = copy.deepcopy(wVec.reshape(np.shape(self.wMat)))
       self.wVec = copy.deepcopy(wVec)
       node_perm = self.node[0,order]
       for i in range(len(self.conn[0])):

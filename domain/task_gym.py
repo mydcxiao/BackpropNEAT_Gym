@@ -150,9 +150,9 @@ class GymTask():
         action = selectAct(annOut, self.actSelect)
         y = self.env.get_labels()
         pred = np.where(action > 0.5, 1, 0)
-        # eps = 1e-8
+        eps = 1e-8
         # loss = -np.mean(y * np.log(action + eps) + (1 - y) * np.log(1 - action +eps))
-        error = np.sum(np.abs(pred - y))
+        error = np.sum(np.abs(pred - y)) + eps
         nConn = np.count_nonzero(wVec)
         totalReward = -error * np.sqrt(1+connPenalty * nConn)
         return totalReward
@@ -209,7 +209,7 @@ class GymTask():
             annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state, False, nNodes)
             action = selectAct(annOut, self.actSelect, False)
             pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
-            error = np.sum(np.abs(pred - y))
+            error = np.sum(np.abs(pred - y)) + eps
             # print(nConn)
             # print(error)
             totalReward = -error * np.sqrt(1+connPenalty * nConn)
