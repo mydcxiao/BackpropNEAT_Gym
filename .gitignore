@@ -1,5 +1,6 @@
 .DS_Store
 log/*
+/log/*
 neat-python/examples/**/*.csv
 neat-python/examples/**/*.gv
 neat-python/examples/**/*.svg
@@ -8,7 +9,8 @@ neat-python/examples/**/neat-checkpoint-*
 *.csv
 *.gv
 *.svg
+**/*.csv
+**/*.gv
+**/*.svg
 neat-checkpoint-*
-**/__pycache__
-/__pycache__
-*/__pycache__
+**/__pycache__/
