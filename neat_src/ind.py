@@ -70,8 +70,8 @@ class Ind():
       wVec = self.wMat.flatten()
       wVec[np.isnan(wVec)] = 0
       self.wVec  = wVec
-      # self.nConn = np.sum(wVec!=0)
-      self.nConn = np.sum(self.conn[4,:])
+      self.nConn = np.sum(wVec!=0)
+      # self.nConn = np.sum(self.conn[4,:])
       return True
     else:
       return False

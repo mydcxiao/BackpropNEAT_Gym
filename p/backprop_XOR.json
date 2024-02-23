@@ -13,7 +13,7 @@
     "prob_mutAct": 0.0,
     "prob_mutConn": 0.0,
     "prob_initEnable": 1.0,
-    "select_cullRatio": 0.2,
+    "select_cullRatio": 0.5,
     "select_eliteRatio": 0.1,
     "select_rankWeight": "exp",
     "select_tournSize": 4,
@@ -23,7 +23,7 @@
     "spec_thresh": 2.0,
     "spec_threshMin": 2.0,
     "spec_geneCoef": 1,
-    "spec_weightCoef": 1,
+    "spec_weightCoef": 0.5,
     "save_mod": 1,
     "bestReps": 5,
     "backprop": true

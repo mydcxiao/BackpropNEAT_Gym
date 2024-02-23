@@ -53,13 +53,13 @@ def getNodeOrder(nodeG,connG):
     dest[np.where(dest==lookup[i])] = i
   
   wMat = np.zeros((np.shape(node)[1],np.shape(node)[1]))
-  # wMat[src,dest] = conn[3,:]
-  wMat[src,dest] = 1 # connected (enabled or not)
+  wMat[src,dest] = conn[3,:]
   connMat = wMat[nIns+nOuts:,nIns+nOuts:]
   connMat[connMat!=0] = 1
   
-  wMat[src,dest] = conn[4,:] # connected and enabled
-  gradMask = np.where(wMat!=0,1,0)
+  # wMat[src,dest] = 0
+  # wMat[src,dest] = conn[4,:] # connected and enabled
+  gradMask = np.where((wMat!=0) & (wMat!=np.nan),1,0)
   wMat[src,dest] = conn[3,:] # give weights back
 
   # Topological Sort of Hidden Nodes
