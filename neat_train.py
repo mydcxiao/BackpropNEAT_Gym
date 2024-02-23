@@ -230,7 +230,7 @@ def slave():
         backprop_eval = comm.recv(source=0, tag=6)
         if not backprop_eval:
           gradMask = np.empty(n_wVec, dtype='d')
-          comm.recv(source=0, tag=7)
+          comm.recv(gradMask, source=0, tag=7)
           result, wVec = task.getFitness(wVec, aVec, backprop=True, gradMask=gradMask)
           comm.Send(result, dest=0, tag=1)      # send fitness back
           comm.Send(wVec, dest=0, tag=2)        # send weight vector back
