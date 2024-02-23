@@ -179,7 +179,7 @@ class GymTask():
         eps = 1e-8
         while not done:
           y = self.env.get_labels()
-          wVec, state, y = device_put(wVec), device_put(state), device_put(y)
+          # wVec, state, y = device_put(wVec), device_put(state), device_put(y)
           # action, grads = value_and_grad(loss)(wVec, state=state, y=y)
           grads = grad(loss)(wVec, state=state, y=y)
           avg_vel = alpha * avg_vel + (1 - alpha) * jnp.square(grads)
@@ -187,6 +187,8 @@ class GymTask():
           # wVec = wVec - step_size * grads
           # print(grads.shape, jnp.max(grads), jnp.min(grads))
           # action = device_get(action)
+          del y, grads, state
+          gc.collect()
           state, _, done, _ = self.env.step(None)
           if view:
             if self.needsClosed:
@@ -196,17 +198,17 @@ class GymTask():
           if done:
             state = self.env.trainSet
             y = self.env.target
-            wVec = device_get(wVec).copy()
+            wVec_np = device_get(wVec).copy()
             nConn = int(np.count_nonzero(wVec))
-            annOut = act(wVec, aVec, self.nInput, self.nOutput, state, False, nNodes)
+            annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state, False, nNodes)
             action = selectAct(annOut, self.actSelect, False)
             pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
             error = np.sum(np.abs(pred - y))
             # print(nConn)
             # print(error)
             totalReward = -error * np.sqrt(1+connPenalty * nConn)
+            del avg_vel, wVec, state, y, action, annOut
+            gc.collect()
             break
-          del y, grads
-          gc.collect()
-          jax.clear_caches()
-        return totalReward, wVec
+        jax.clear_caches()
+        return totalReward, wVec_np

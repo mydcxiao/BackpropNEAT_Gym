@@ -16,6 +16,10 @@ rank = comm.Get_rank()
 from neat_src import * # NEAT
 from domain import *   # Task environments
 
+import os
+# os.environ['XLA_PYTHON_CLIENT_PREALLOCATE']='false'
+os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.40'
+
 
 # -- Run NEAT ------------------------------------------------------------ -- #
 def master(): 
