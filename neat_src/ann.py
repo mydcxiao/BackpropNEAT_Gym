@@ -2,6 +2,7 @@ import numpy as np
 import jax
 import jax.numpy as jnp
 from jax import grad, jit, vmap
+from jax.lax import stop_gradient
 
 # -- ANN Ordering -------------------------------------------------------- -- #
 
@@ -52,9 +53,14 @@ def getNodeOrder(nodeG,connG):
     dest[np.where(dest==lookup[i])] = i
   
   wMat = np.zeros((np.shape(node)[1],np.shape(node)[1]))
-  wMat[src,dest] = conn[3,:]
+  # wMat[src,dest] = conn[3,:]
+  wMat[src,dest] = 1 # connected (enabled or not)
   connMat = wMat[nIns+nOuts:,nIns+nOuts:]
   connMat[connMat!=0] = 1
+  
+  wMat[src,dest] = conn[4,:] # connected and enabled
+  gradMask = np.where(wMat!=0,1,0)
+  wMat[src,dest] = conn[3,:] # give weights back
 
   # Topological Sort of Hidden Nodes
   edge_in = np.sum(connMat,axis=0)
@@ -76,7 +82,7 @@ def getNodeOrder(nodeG,connG):
   Q = np.r_[lookup[:nIns], Q, lookup[nIns:nIns+nOuts]]
   wMat = wMat[np.ix_(Q,Q)]
   
-  return Q, wMat
+  return Q, wMat, gradMask
 
 def getLayer(wMat):
   """Get layer of each node in weight matrix
@@ -114,7 +120,7 @@ def getLayer(wMat):
 
 # -- ANN Activation ------------------------------------------------------ -- #
 
-def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None):
+def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None, gradMask=None):
   """Returns FFANN output given a single input pattern
   If the variable weights is a vector it is turned into a square weight matrix.
   
@@ -170,10 +176,12 @@ def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None):
     if jnp.ndim(weights) < 2:
         # nNodes = int(jnp.sqrt(jnp.shape(weights)[0]))
         wMat = jnp.reshape(weights, (nNodes, nNodes))
+        gradMask = jnp.reshape(gradMask, (nNodes, nNodes))
     else:
         # nNodes = jnp.shape(weights)[0]
         wMat = weights
     wMat = jnp.where(jnp.isnan(wMat), 0 , wMat)
+    wMat = stop_gradient(wMat * (1 - gradMask)) + wMat * gradMask
 
     # # Vectorize input
     if jnp.ndim(inPattern) > 1:

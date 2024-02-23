@@ -51,6 +51,7 @@ class Ind():
     self.rank    = []
     self.birth   = []
     self.species = []
+    self.gradMask = []
 
   def nConns(self):
     """Returns number of active connections
@@ -60,27 +61,31 @@ class Ind():
   def express(self):
     """Converts genes to weight matrix and activation vector
     """
-    order, wMat = getNodeOrder(self.node, self.conn)
+    order, wMat, gradMask = getNodeOrder(self.node, self.conn)
     if order is not False:
       self.wMat = wMat
       self.aVec = self.node[2,order]
+      self.gradMask = gradMask
 
       wVec = self.wMat.flatten()
       wVec[np.isnan(wVec)] = 0
       self.wVec  = wVec
-      self.nConn = np.sum(wVec!=0)
+      # self.nConn = np.sum(wVec!=0)
+      self.nConn = np.sum(self.conn[4,:])
       return True
     else:
       return False
     
   def impress(self, wVec):
-    order, _ = getNodeOrder(self.node, self.conn)
+    order, _, _ = getNodeOrder(self.node, self.conn)
     if order is not False:
-      self.wMat = copy.deepcopy(wVec.reshape(np.shape(self.wMat)))
-      self.wVec = copy.deepcopy(wVec)
+      wMat = wVec.reshape(np.shape(self.wMat))
+      # self.wMat = copy.deepcopy(wVec.reshape(np.shape(self.wMat)))
+      # self.wVec = copy.deepcopy(wVec)
       node_perm = self.node[0,order]
       for i in range(len(self.conn[0])):
-        self.conn[3,i] = self.wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
+        self.conn[3,i] = wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
+      assert self.express(), 'Impress failed'
       return True
     else:
       return False
@@ -348,7 +353,7 @@ class Ind():
 
     nIns = len(nodeG[0,nodeG[1,:] == 1]) + len(nodeG[0,nodeG[1,:] == 4])
     nOuts = len(nodeG[0,nodeG[1,:] == 2])
-    order, wMat = getNodeOrder(nodeG, connG)   # Topological Sort of Network
+    order, wMat, _ = getNodeOrder(nodeG, connG)   # Topological Sort of Network
     hMat = wMat[nIns:-nOuts,nIns:-nOuts]
     hLay = getLayer(hMat)+1
 

@@ -42,7 +42,7 @@ class GymTask():
     # Special needs...
     self.needsClosed = (game.env_name.startswith("CartPoleSwingUp"))    
   
-  def getFitness(self, wVec, aVec, hyp=None, view=False, nRep=False, seed=-1, backprop=False, step_size=0.01, backprop_eval=False):
+  def getFitness(self, wVec, aVec, hyp=None, view=False, nRep=False, seed=-1, backprop=False, step_size=0.01, backprop_eval=False, gradMask=None):
     """Get fitness of a single individual.
   
     Args:
@@ -72,7 +72,7 @@ class GymTask():
       wVec = np.where(np.isnan(wVec), 0, wVec)
       if not backprop_eval:
         for iRep in range(nRep):
-          reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size, backprop_eval=backprop_eval)
+          reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size, backprop_eval=backprop_eval, gradMask=gradMask)
           # print(f'Epoch:{iRep}:',reward)
         return reward, wVec
       else:
@@ -82,7 +82,7 @@ class GymTask():
         return np.mean(reward)
         
 
-  def testInd(self, wVec, aVec, view=False,seed=-1, backprop=False, step_size=0.01, backprop_eval=False):
+  def testInd(self, wVec, aVec, view=False,seed=-1, backprop=False, step_size=0.01, backprop_eval=False, gradMask=None):
     """Evaluate individual on task
     Args:
       wVec    - (np_array) - weight matrix as a flattened vector
@@ -166,8 +166,8 @@ class GymTask():
         else:
           nNodes = int(jnp.shape(wVec)[0])
         
-        def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes):
-            annOut = act(wVec, aVec, input, output, state, backprop, nNodes)
+        def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes, gradMask):
+            annOut = act(wVec, aVec, input, output, state, backprop, nNodes, gradMask)
             action = selectAct(annOut, actSelect, backprop)
             action = action.reshape(-1, 1)
             eps = 1e-8
@@ -175,7 +175,7 @@ class GymTask():
             loss = -jnp.mean(y * jnp.log(action_clipped) + (1 - y) * jnp.log(1 - action_clipped))
             return loss
             
-        loss = partial(forward, aVec=aVec, input=self.nInput, output=self.nOutput, actSelect=self.actSelect, backprop=backprop, nNodes=nNodes)
+        loss = partial(forward, aVec=aVec, input=self.nInput, output=self.nOutput, actSelect=self.actSelect, backprop=backprop, nNodes=nNodes, gradMask=gradMask)
         loss = jit(loss)
         
         totalReward = 0

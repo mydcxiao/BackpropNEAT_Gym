@@ -139,11 +139,11 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False, backprop_e
 
   reward = np.empty(nJobs, dtype=np.float64)
   if backprop:
-    wVecs = [None for _ in range(nJobs)]
-    wVecs_dims = [None for _ in range(nJobs)]
     if backprop_eval:
       flag = True
     else:
+      wVecs = [None for _ in range(nJobs)]
+      wVecs_dims = [None for _ in range(nJobs)]
       flag = False
   i = 0 # Index of fitness we are filling
   for iBatch in range(nBatch): # Send one batch of individuals
@@ -154,8 +154,9 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False, backprop_e
         aVec   = pop[i].aVec.flatten()
         n_aVec = np.shape(aVec)[0]
         
-        if backprop:
+        if backprop and not backprop_eval:
           wVecs_dims[i] = n_wVec
+          gradMask = pop[i].gradMask.flatten()
         
         comm.send(n_wVec, dest=(iWork)+1, tag=1)
         comm.Send(  wVec, dest=(iWork)+1, tag=2)
@@ -166,7 +167,9 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False, backprop_e
         else:
           comm.send(  seed, dest=(iWork)+1, tag=5)
         if backprop:
-          comm.send(flag, dest=(iWork)+1, tag=6)  
+          comm.send(flag, dest=(iWork)+1, tag=6)
+        if backprop and not backprop_eval:
+          comm.send(gradMask, dest=(iWork)+1, tag=7) 
         
       else: # message size of 0 is signal to shutdown workers
         n_wVec = 0
@@ -226,7 +229,8 @@ def slave():
       else:
         backprop_eval = comm.recv(source=0, tag=6)
         if not backprop_eval:
-          result, wVec = task.getFitness(wVec, aVec, backprop=True)
+          gradMask = comm.recv(source=0, tag=7)
+          result, wVec = task.getFitness(wVec, aVec, backprop=True, gradMask=gradMask)
           comm.Send(result, dest=0, tag=1)      # send fitness back
           comm.Send(wVec, dest=0, tag=2)        # send weight vector back
         else:
