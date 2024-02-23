@@ -10,3 +10,5 @@ neat-python/examples/**/neat-checkpoint-*
 *.svg
 neat-checkpoint-*
 **/__pycache__
+/__pycache__
+*/__pycache__
