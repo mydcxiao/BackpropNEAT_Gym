@@ -70,10 +70,16 @@ class GymTask():
       return fitness
     else:
       wVec = np.where(np.isnan(wVec), 0, wVec)
-      for iRep in range(nRep):
-        reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size, backprop_eval=backprop_eval)
-        print(f'Epoch:{iRep}:',reward)
-      return reward, wVec
+      if not backprop_eval:
+        for iRep in range(nRep):
+          reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size, backprop_eval=backprop_eval)
+          # print(f'Epoch:{iRep}:',reward)
+        return reward, wVec
+      else:
+        reward = np.empty(nRep)
+        for iRep in range(nRep):
+          reward[iRep] = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size, backprop_eval=backprop_eval)
+        return np.mean(reward)
         
 
   def testInd(self, wVec, aVec, view=False,seed=-1, backprop=False, step_size=0.01, backprop_eval=False):
@@ -148,7 +154,7 @@ class GymTask():
         # loss = -np.mean(y * np.log(action + eps) + (1 - y) * np.log(1 - action +eps))
         error = np.sum(np.abs(pred - y))
         nConn = np.count_nonzero(wVec)
-        totalReward = -loss * np.sqrt(1+connPenalty * nConn)
+        totalReward = -error * np.sqrt(1+connPenalty * nConn)
         return totalReward
       
       else:
@@ -199,7 +205,7 @@ class GymTask():
             state = self.env.trainSet
             y = self.env.target
             wVec_np = device_get(wVec).copy()
-            nConn = int(np.count_nonzero(wVec))
+            nConn = np.count_nonzero(wVec_np)
             annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state, False, nNodes)
             action = selectAct(annOut, self.actSelect, False)
             pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)

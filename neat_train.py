@@ -17,8 +17,8 @@ from neat_src import * # NEAT
 from domain import *   # Task environments
 
 import os
-# os.environ['XLA_PYTHON_CLIENT_PREALLOCATE']='false'
-os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.40'
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE']='false'
+# os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.05'
 
 
 # -- Run NEAT ------------------------------------------------------------ -- #
