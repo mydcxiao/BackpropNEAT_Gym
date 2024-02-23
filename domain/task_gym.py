@@ -152,7 +152,7 @@ class GymTask():
         pred = np.where(action > 0.5, 1, 0)
         eps = 1e-8
         # loss = -np.mean(y * np.log(action + eps) + (1 - y) * np.log(1 - action +eps))
-        error = np.sum(np.abs(pred - y)) + eps
+        error = np.mean(np.abs(pred - y)) + eps
         nConn = np.count_nonzero(wVec)
         totalReward = -error * np.sqrt(1+connPenalty * nConn)
         return totalReward
@@ -171,7 +171,8 @@ class GymTask():
             action = selectAct(annOut, actSelect, backprop)
             action = action.reshape(-1, 1)
             eps = 1e-8
-            loss = -jnp.mean(y * jnp.log(action + eps) + (1 - y) * jnp.log(1 - action + eps))
+            action_clipped = jnp.clip(action, eps, 1 - eps)
+            loss = -jnp.mean(y * jnp.log(action_clipped) + (1 - y) * jnp.log(1 - action_clipped))
             return loss
             
         loss = partial(forward, aVec=aVec, input=self.nInput, output=self.nOutput, actSelect=self.actSelect, backprop=backprop, nNodes=nNodes)
@@ -190,9 +191,6 @@ class GymTask():
           grads = grad(loss)(wVec, state=state, y=y)
           avg_vel = alpha * avg_vel + (1 - alpha) * jnp.square(grads)
           wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.square(avg_vel)) + eps))
-          # wVec = wVec - step_size * grads
-          # print(grads.shape, jnp.max(grads), jnp.min(grads))
-          # action = device_get(action)
           del y, grads, state
           gc.collect()
           state, _, done, _ = self.env.step(None)
@@ -209,7 +207,7 @@ class GymTask():
             annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state, False, nNodes)
             action = selectAct(annOut, self.actSelect, False)
             pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
-            error = np.sum(np.abs(pred - y)) + eps
+            error = np.mean(np.abs(pred - y)) + 1e-8
             # print(nConn)
             # print(error)
             totalReward = -error * np.sqrt(1+connPenalty * nConn)
