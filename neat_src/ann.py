@@ -81,6 +81,7 @@ def getNodeOrder(nodeG,connG):
   Q += nIns+nOuts
   Q = np.r_[lookup[:nIns], Q, lookup[nIns:nIns+nOuts]]
   wMat = wMat[np.ix_(Q,Q)]
+  gradMask = gradMask[np.ix_(Q,Q)]
   
   return Q, wMat, gradMask
 
