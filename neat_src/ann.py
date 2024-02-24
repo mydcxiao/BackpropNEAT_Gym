@@ -82,10 +82,10 @@ def getNodeOrder(nodeG,connG):
   Q = np.r_[lookup[:nIns], Q, lookup[nIns:nIns+nOuts]]
   wMat = wMat[np.ix_(Q,Q)]
   # gradMask = gradMask[np.ix_(Q,Q)]
-  gradMask = np.where((wMat == 0) | (np.isnan(wMat)), 0, 1)
+  gradMask = np.where((wMat == 0) | (np.isnan(wMat)), 0, 1).astype(np.float64) # typecast necessary for comm
   
   assert gradMask.shape == wMat.shape, "gradMask and wMat should have the same shape"
-  
+  # print(gradMask) # correct
   return Q, wMat, gradMask
 
 def getLayer(wMat):
@@ -184,7 +184,8 @@ def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None, 
     else:
         # nNodes = jnp.shape(weights)[0]
         wMat = weights
-    wMat = jnp.where(jnp.isnan(wMat), 0 , wMat)
+    # wMat = jnp.where(jnp.isnan(wMat), 0 , wMat)
+    # jax.debug.print("gradMask in act {}", gradMask) #correct
     wMat = stop_gradient(wMat * (1 - gradMask)) + wMat * gradMask
 
     # Vectorize input

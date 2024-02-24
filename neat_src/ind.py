@@ -72,6 +72,7 @@ class Ind():
     wVec[np.isnan(wVec)] = 0
     self.wVec  = wVec
     self.nConn = np.sum(wVec!=0)
+    # print("gradMask in express", self.gradMask) # no problem
     # self.nConn = np.sum(self.conn[4,:])
     #   return True
     # else:

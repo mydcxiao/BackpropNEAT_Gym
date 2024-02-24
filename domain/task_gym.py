@@ -170,7 +170,7 @@ class GymTask():
             annOut = act(wVec, aVec, input, output, state, backprop, nNodes, gradMask)
             action = selectAct(annOut, actSelect, backprop)
             action = action.reshape(-1, 1)
-            eps = 1e-8
+            eps = 1e-6 # bigger to avoid NaN
             action_clipped = jnp.clip(action, eps, 1 - eps)
             loss = -jnp.mean(y * jnp.log(action_clipped) + (1 - y) * jnp.log(1 - action_clipped))
             return loss
@@ -189,6 +189,9 @@ class GymTask():
           # wVec, state, y = device_put(wVec), device_put(state), device_put(y)
           # action, grads = value_and_grad(loss)(wVec, state=state, y=y)
           grads = grad(loss)(wVec, state=state, y=y)
+          # jax.debug.print("wVec: {}", wVec)
+          # jax.debug.print("gradMask: {}", gradMask)
+          # jax.debug.print("grads: {}", grads)
           avg_vel = alpha * avg_vel + (1 - alpha) * jnp.square(grads)
           wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.square(avg_vel)) + eps))
           del y, grads, state
