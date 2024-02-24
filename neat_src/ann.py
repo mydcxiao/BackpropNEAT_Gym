@@ -59,8 +59,8 @@ def getNodeOrder(nodeG,connG):
   
   # wMat[src,dest] = 0
   # wMat[src,dest] = conn[4,:] # connected and enabled
-  gradMask = np.where((wMat!=0) & (wMat!=np.nan),1,0)
-  wMat[src,dest] = conn[3,:] # give weights back
+  # gradMask = np.where((wMat == 0) | (np.isnan(wMat)), 0, 1)
+  # wMat[src,dest] = conn[3,:] # give weights back
 
   # Topological Sort of Hidden Nodes
   edge_in = np.sum(connMat,axis=0)
@@ -68,7 +68,7 @@ def getNodeOrder(nodeG,connG):
   for i in range(len(connMat)):
     if (len(Q) == 0) or (i >= len(Q)):
       Q = []
-      return False, False # Cycle found, can't sort
+      return False, False, False # Cycle found, can't sort
     edge_out = connMat[Q[i],:]
     edge_in  = edge_in - edge_out # Remove nodes' conns from total
     nextNodes = np.setdiff1d(np.where(edge_in==0)[0], Q)
@@ -81,7 +81,10 @@ def getNodeOrder(nodeG,connG):
   Q += nIns+nOuts
   Q = np.r_[lookup[:nIns], Q, lookup[nIns:nIns+nOuts]]
   wMat = wMat[np.ix_(Q,Q)]
-  gradMask = gradMask[np.ix_(Q,Q)]
+  # gradMask = gradMask[np.ix_(Q,Q)]
+  gradMask = np.where((wMat == 0) | (np.isnan(wMat)), 0, 1)
+  
+  assert gradMask.shape == wMat.shape, "gradMask and wMat should have the same shape"
   
   return Q, wMat, gradMask
 
@@ -173,7 +176,7 @@ def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None, 
     output = nodeAct[:,-nOutput:]   
     return output
   else:   
-    # def loss(weights, aVec, nInput, nOutput, inPattern, backprop, nNodes):
+  # Turn weight vector into weight matrix
     if jnp.ndim(weights) < 2:
         # nNodes = int(jnp.sqrt(jnp.shape(weights)[0]))
         wMat = jnp.reshape(weights, (nNodes, nNodes))
@@ -184,7 +187,7 @@ def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None, 
     wMat = jnp.where(jnp.isnan(wMat), 0 , wMat)
     wMat = stop_gradient(wMat * (1 - gradMask)) + wMat * gradMask
 
-    # # Vectorize input
+    # Vectorize input
     if jnp.ndim(inPattern) > 1:
         nSamples = jnp.shape(inPattern)[0]
     else:
@@ -194,6 +197,7 @@ def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None, 
     nodeAct  = jnp.zeros((nSamples,nNodes))
     nodeAct = nodeAct.at[:,0].set(1) # Bias activation
     nodeAct = nodeAct.at[:,1:nInput+1].set(inPattern)
+    
     # Propagate signal through hidden to output nodes
     iNode = nInput+1
     for iNode in range(nInput+1,nNodes):
@@ -202,8 +206,6 @@ def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None, 
       # nodeAct.at[:,iNode].set(action)  # break the computational graph and cause zero grad
       nodeAct = nodeAct.at[:,iNode].set(action)
     output = nodeAct[:,-nOutput:]
-    # grads = jax.grad(loss)(weights, aVec, nInput, nOutput, inPattern, backprop, nNodes)
-    # print(type(grads), jnp.max(grads), jnp.min(grads))
     return output
 
 def applyAct(actId, x, backprop=False):

@@ -62,37 +62,39 @@ class Ind():
     """Converts genes to weight matrix and activation vector
     """
     order, wMat, gradMask = getNodeOrder(self.node, self.conn)
-    if order is not False:
-      self.wMat = wMat
-      self.aVec = self.node[2,order]
-      self.gradMask = gradMask
-
-      wVec = self.wMat.flatten()
-      wVec[np.isnan(wVec)] = 0
-      self.wVec  = wVec
-      self.nConn = np.sum(wVec!=0)
-      # self.nConn = np.sum(self.conn[4,:])
-      return True
-    else:
-      return False
+    # if order is not False:
+    assert order is not False, 'Topological sort failed'
+    self.wMat = wMat
+    self.aVec = self.node[2,order]
+    self.gradMask = gradMask
+    assert self.gradMask.shape == self.wMat.shape, 'gradMask shape does not match wMat shape'
+    wVec = self.wMat.flatten()
+    wVec[np.isnan(wVec)] = 0
+    self.wVec  = wVec
+    self.nConn = np.sum(wVec!=0)
+    # self.nConn = np.sum(self.conn[4,:])
+    #   return True
+    # else:
+    #   return False
     
   def impress(self, wVec):
     order, _, _ = getNodeOrder(self.node, self.conn)
-    if order is not False:
-      wMat = wVec.reshape(np.shape(self.wMat))
-      # self.wMat = copy.deepcopy(wVec.reshape(np.shape(self.wMat)))
-      # self.wVec = copy.deepcopy(wVec)
-      node_perm = self.node[0,order]
-      for i in range(len(self.conn[0])):
-        value = wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
-        if self.conn[4,i] == 1 and value == 0:
-          self.conn[3,i] = 1e-8
-        else:
-          self.conn[3,i] = value
-      assert self.express(), 'Impress failed'
-      return True
-    else:
-      return False
+    # if order is not False:
+    assert order is not False, 'Topological sort failed'
+    wMat = wVec.reshape(np.shape(self.wMat))
+    # self.wMat = copy.deepcopy(wVec.reshape(np.shape(self.wMat)))
+    # self.wVec = copy.deepcopy(wVec)
+    node_perm = self.node[0,order]
+    for i in range(len(self.conn[0])):
+      value = wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
+      if self.conn[4,i] == 1 and value == 0:
+        self.conn[3,i] = value + 1e-8
+      else:
+        self.conn[3,i] = value
+    self.express()
+    #   return True
+    # else:
+    #   return False
 
   def createChild(self, p, innov, gen=0, mate=None):
     """Create new individual with this individual as a parent
@@ -358,6 +360,7 @@ class Ind():
     nIns = len(nodeG[0,nodeG[1,:] == 1]) + len(nodeG[0,nodeG[1,:] == 4])
     nOuts = len(nodeG[0,nodeG[1,:] == 2])
     order, wMat, _ = getNodeOrder(nodeG, connG)   # Topological Sort of Network
+    assert order is not False, 'Topological sort failed'
     hMat = wMat[nIns:-nOuts,nIns:-nOuts]
     hLay = getLayer(hMat)+1
 

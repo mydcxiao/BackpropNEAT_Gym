@@ -169,7 +169,7 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False, backprop_e
         if backprop:
           comm.send(flag, dest=(iWork)+1, tag=6)
         if backprop and not backprop_eval:
-          comm.send(gradMask, dest=(iWork)+1, tag=7) 
+          comm.Send(gradMask, dest=(iWork)+1, tag=7) 
         
       else: # message size of 0 is signal to shutdown workers
         n_wVec = 0
@@ -229,8 +229,10 @@ def slave():
       else:
         backprop_eval = comm.recv(source=0, tag=6)
         if not backprop_eval:
+          # Send matches Recv, send matches recv
           gradMask = np.empty(n_wVec, dtype='d')
-          comm.recv(gradMask, source=0, tag=7)
+          comm.Recv(gradMask, source=0, tag=7)
+          # gradMask = comm.recv(source=0, tag=7)
           result, wVec = task.getFitness(wVec, aVec, backprop=True, gradMask=gradMask)
           comm.Send(result, dest=0, tag=1)      # send fitness back
           comm.Send(wVec, dest=0, tag=2)        # send weight vector back
