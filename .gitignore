@@ -1,6 +1,4 @@
 .DS_Store
-log/*
-/log/*
 neat-python/examples/**/*.csv
 neat-python/examples/**/*.gv
 neat-python/examples/**/*.svg
