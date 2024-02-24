@@ -28,7 +28,7 @@ class BackpropClassifyEnv(gym.Env):
 
     self.t = 0          # Current batch number
     self.t_limit = 0    # Number of batches if you need them
-    self.batch   = 10 # Number of images per batch
+    self.batch   = 100 # Number of images per batch
     self.seed()
     self.viewer = None
 
