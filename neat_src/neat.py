@@ -102,7 +102,7 @@ class Neat():
     for i in range(p['popSize']):
         newInd = Ind(conn, node)
         scale = 2*(np.random.rand(1,nConn)-0.5)
-        newInd.conn[3,:] = np.where(scale != 0, scale, 0.1)*p['ann_absWCap']
+        newInd.conn[3,:] = np.where(scale != 0, scale, 0.1)*p['ann_absWCap'] # DEBUG fix zero weight bug
         # newInd.conn[3,:] = 2*(np.random.rand(1,nConn)-0.5)*p['ann_absWCap']
         newInd.conn[4,:] = np.random.rand(1,nConn) < p['prob_initEnable']
         newInd.express()

@@ -399,7 +399,7 @@ class Ind():
         connNew[1] = nodeKey[src,0]
         connNew[2] = nodeKey[dest[0],0]
         connNew[3] = (np.random.rand()-0.5)*2*p['ann_absWCap']
-        connNew[4] = 1
+        connNew[4] = 1 if connNew[3] != 0 else 0 # DEBUG fix zero weight connections
         connG = np.c_[connG,connNew]
 
         # Record innovation
