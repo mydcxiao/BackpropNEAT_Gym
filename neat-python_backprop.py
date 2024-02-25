@@ -1,4 +1,4 @@
-import multiprocessing
+import multiprocessing as mp
 import os
 import pickle
 import random
@@ -21,7 +21,10 @@ from neat.attributes import StringAttribute, BoolAttribute
 import neat
 import visualize
 
-NUM_CORES = multiprocessing.cpu_count()
+os.environ['XLA_PYTHON_CLIENT_PREALLOCATE']='false'
+# os.environ['XLA_PYTHON_CLIENT_MEM_FRACTION']='.05'
+
+NUM_CORES = mp.cpu_count()
 
 
 class NumpyAttribute(neat.attributes.BaseAttribute):
@@ -107,34 +110,34 @@ class BackpropGenome(neat.DefaultGenome):
         super().__init__(key)
         
         self.aggregation_function_defs = {
-            'sum': lambda x: jnp.sum(x, axis=1),
-            'product': lambda x: jnp.prod(x, axis=1),
-            'max': lambda x: jnp.max(x, axis=1),
-            'min': lambda x: jnp.min(x, axis=1),
-            'mean': lambda x: jnp.mean(x, axis=1),
-            'median': lambda x: jnp.median(x, axis=1),
+            'sum': sum_agg,
+            'product': product_agg,
+            'max': max_agg,
+            'min': min_agg,
+            'mean': mean_agg,
+            'median': median_agg,
         }
         
         self.activation_defs = {
-            'sigmoid': jax.nn.sigmoid,
-            'tanh': jax.nn.tanh,
-            'sin': jnp.sin,
-            'cos': jnp.cos,
-            'gauss': lambda x: jnp.exp(-jnp.multiply(x, x) / 2.0),
-            'relu': jax.nn.relu,
-            'elu': jax.nn.elu,
-            'lelu': jax.nn.leaky_relu,
-            'selu': jax.nn.selu,
-            'softplus': jax.nn.softplus,
-            'identity': lambda x: x,
-            'clamped': lambda x: jnp.clip(x, -1, 1),
-            'inv': lambda x: 1 / x if x != 0 else x,
-            'log': lambda x: jnp.log(jnp.maximum(x, 1e-7)),
-            'exp': lambda x: jnp.exp(jnp.clip(x, -60, 60)),
-            'abs': jnp.abs,
-            'hat': lambda x: jnp.maximum(0, 1 - jnp.abs(x)),
-            'square': lambda x: jnp.square(x),
-            'cube': lambda x: jnp.power(x, 3),
+            'sigmoid': sigmoid,
+            'tanh': tanh,
+            'sin': sin,
+            'cos': cos,
+            'gauss': gauss,
+            'relu': relu,
+            # 'elu': jax.nn.elu,
+            # 'lelu': jax.nn.leaky_relu,
+            # 'selu': jax.nn.selu,
+            # 'softplus': jax.nn.softplus,
+            'identity': identity,
+            'clamped': clamped,
+            'inv': inv,
+            'log': log,
+            'exp': exp,
+            'abs': abs,
+            'hat': hat,
+            'square': square,
+            'cube': cube,
         }
     
     # @classmethod
@@ -143,6 +146,68 @@ class BackpropGenome(neat.DefaultGenome):
     #     param_dict['connection_gene_type'] = BackpropConnectionGene
     #     return neat.genome.DefaultGenomeConfig(param_dict)
 
+def sum_agg(x):
+    return jnp.sum(x, axis=1)
+
+def product_agg(x):
+    return jnp.prod(x, axis=1)
+
+def max_agg(x):
+    return jnp.max(x, axis=1)
+
+def min_agg(x):
+    return jnp.min(x, axis=1)
+
+def mean_agg(x):
+    return jnp.mean(x, axis=1)
+
+def median_agg(x):
+    return jnp.median(x, axis=1) 
+
+def sigmoid(x):
+    return (jnp.tanh(x/2.0) + 1.0)/2.0
+
+def sin(x):
+    return jnp.sin(x)
+
+def cos(x):
+    return jnp.cos(x)
+
+def tanh(x):
+    return jnp.tanh(x)
+
+def relu(x):
+    return jnp.maximum(0, x)
+    
+def gauss(x):
+    return jnp.exp(-jnp.multiply(x, x) / 2.0)
+
+def abs(x):
+    return jnp.abs(x)
+
+def identity(x):
+    return x
+
+def clamped(x):
+    return jnp.clip(x, -1, 1)
+
+def inv(x):
+    return 1 / x if x != 0 else x
+
+def log(x):
+    return jnp.log(jnp.maximum(x, 1e-7))
+
+def exp(x):
+    return jnp.exp(jnp.clip(x, -60, 60))
+
+def hat(x):
+    return jnp.maximum(0, 1 - jnp.abs(x))
+
+def square(x):
+    return jnp.square(x)
+
+def cube(x):
+    return jnp.power(x, 3)
 
 class GymClassificationTask():
     
@@ -151,55 +216,63 @@ class GymClassificationTask():
                  num_trails: int = 1, # epochs
                  num_workers: int = 1, # number of workers
                 ):
-        self.env = make_env(game)
+        self.game = game
         self.num_trials = num_trails
         self.num_workers = num_workers
     
-    def train_genome(self, genome, config, batch=10, lr=0.01):
-        self._set_batch(batch)
+    def train_genome(self, params, adj_list, genome, config, batch=10, lr=0.01):
+        self.env = make_env(self.game)
+        
         prev_fitness = 0
         for _ in range(self.num_trials):
-            fitness = self._train_one_epoch(genome=genome, config=config, lr=lr)
-            if jnp.abs(fitness - prev_fitness) < 1e-3:
+            fitness = self._train_one_epoch(params, adj_list, batch, genome, config, lr=lr)
+            if abs(fitness - prev_fitness) < 1e-3:
                 break
         
-        return float(fitness)
+        return fitness
         # return np.float32(fitness)
     
     def evaluate_genomes(self, genomes, config, batch=10, lr=0.01):
         t0 = time.time()
+        params_list = []
+        adj_lists = []
+        for _, g in genomes:
+            adj_list, weights, biases, responses = FeedForwardNetwork.create(g, config)
+            params = {'weights': weights, 'biases': biases, 'responses': responses}
+            params_list.append(params)
+            adj_lists.append(adj_list)
+        print("Time to create FFN {0}".format(time.time() - t0))
+        t0 = time.time()
+        
         print("Training {0} epoches".format(self.num_trials))
-        for _, genome in genomes:
-            reward = self.train_genome(genome, config, batch, lr)
-            genome.fitness = reward
-        # if self.num_workers < 2:
-        #     for genome in genomes:
-        #         reward = self.train_genome(genome, config, batch, lr)
-        #         genome.fitness = reward
-        # else:
-        #     with multiprocessing.Pool(self.num_workers) as pool:
-        #         jobs = []
-        #         for genome in genomes:
-        #             jobs.append(pool.apply_async(self.train_genome,
-        #                                          (genome, config, batch, lr)))
+        if self.num_workers < 2:
+            for i, (_, genome) in enumerate(genomes):
+                reward = self.train_genome(params_list[i], adj_lists[i], genome, config, batch, lr)
+                genome.fitness = reward
+        else:
+            with mp.Pool(self.num_workers) as pool:
+                jobs = []
+                for i, (_, genome) in enumerate(genomes):
+                    jobs.append(pool.apply_async(self.train_genome,
+                                                 (params_list[i], adj_lists[i], genome, config, batch, lr)))
 
-        #         for job, genome in zip(jobs, genomes):
-        #             reward = job.get(timeout=None)
-        #             genome.fitness = reward
+                for job, (_, genome) in zip(jobs, genomes):
+                    reward = job.get(timeout=None)
+                    genome.fitness = reward
+        
+        # for _, genome in genomes:
+        #     reward = self.train_genome(genome, config, batch, lr)
+        #     genome.fitness = reward
+        
         print("Final training time {0}\n".format(time.time() - t0))
     
-    def _set_batch(self, batch):
-        self.env.batch = batch
-    
-    def _train_one_epoch(self, genome, config, lr=0.01):
+    def _train_one_epoch(self, params, adj_list, batch, genome, config, lr=0.01):
         self.env.t = 0
+        self.env.batch = batch
         state = self.env.reset()
         targets = self.env.get_labels()
         
-        adj_list, weights, biases, responses = FeedForwardNetwork.create(genome, config)
-        params = {'weights': weights, 'biases': biases, 'responses': responses}
-        
-        criterion = partial(loss_fn, adj_list=adj_list, genome=genome, config=config)
+        criterion = partial(loss_fn, adj_list=adj_list, batch=self.env.batch, genome=genome, config=config)
         
         done = False
         prev_loss = 0
@@ -217,7 +290,7 @@ class GymClassificationTask():
             if done:
                 state = self.env.trainSet
                 targets = self.env.target
-                outputs = FeedForwardNetwork.forward(params['weights'], params['biases'], params['responses'], state, adj_list, genome, config)
+                outputs = FeedForwardNetwork.forward(params['weights'], params['biases'], params['responses'], state, self.env.batch, adj_list, genome, config)
                 logits = jax.nn.sigmoid(outputs).reshape(-1, 1)
                 pred = jnp.where(logits > 0.5, 1, 0)
                 acc = jnp.mean(jnp.equal(pred, targets))
@@ -226,7 +299,7 @@ class GymClassificationTask():
                 params = jnp2float(params)
                 FeedForwardNetwork.backward(params['weights'], params['biases'], params['responses'], genome)
                 break
-        return fitness
+        return float(fitness)
 
 
 def prod(dic1, dic2):
@@ -263,11 +336,11 @@ def jnp2float(dic):
     return {k: {k1: float(dic[k][k1]) for k1 in dic[k]} for k in dic}
 
 
-def loss_fn(params, inputs, targets, adj_list, genome, config):
+def loss_fn(params, inputs, targets, adj_list, batch, genome, config):
     w = params['weights']
     b = params['biases']
     r = params['responses']
-    outputs = FeedForwardNetwork.forward(w, b, r, inputs, adj_list, genome, config)
+    outputs = FeedForwardNetwork.forward(w, b, r, inputs, batch, adj_list, genome, config)
     logit = jax.nn.sigmoid(outputs).reshape(-1, 1)
     logit = jnp.clip(logit, 1e-7, 1 - 1e-7)
     loss = -jnp.mean(targets * jnp.log(logit) + (1 - targets) * jnp.log(1 - logit))
@@ -316,18 +389,24 @@ class FeedForwardNetwork(object):
             genome.nodes[node_key].response = responses[node_key]
 
     @staticmethod
-    def forward(weights, biases, responses, inputs, adj_list, genome, config):
+    def forward(weights, biases, responses, inputs, batch, adj_list, genome, config):
         input_nodes = config.genome_config.input_keys
         output_nodes = config.genome_config.output_keys
         assert len(input_nodes) == inputs.shape[1], \
             f"Incorrect number of input nodes (Expected {len(input_nodes)}, got {inputs.shape[1]})."
-
-        values = {key: jnp.zeros(inputs.shape[0]) for key in input_nodes + output_nodes}
+            
+        # TODO why is this not work for mp
+        # values = {key: jnp.zeros(inputs.shape[0]) for key in input_nodes + output_nodes}
+        
+        values = {key: 0 for key in input_nodes + output_nodes}
         for i in range(inputs.shape[1]):
             values[input_nodes[i]] = inputs[:, i]
         
         for node, links in adj_list:
-            node_inputs = jnp.zeros((inputs.shape[0], len(links)))
+            # TODO why is this not work for mp
+            # node_inputs = jnp.zeros((inputs.shape[0], len(links)))
+            # node_inputs = jnp.empty((batch, len(links)))
+            node_inputs = [None for _ in range(len(links))]
             for idx, (i, o) in enumerate(links):
                 ng = genome.nodes[o]
                 try:
@@ -341,16 +420,56 @@ class FeedForwardNetwork(object):
                 bias = biases[o]
                 response = responses[o]
                 w = weights[(i, o)]
-                node_inputs.at[:, idx].set(values[i] * w)
+                # node_inputs.at[:, idx].set(values[i] * w)
+                node_inputs[idx] = values[i] * w
+            node_inputs = jnp.array(node_inputs).T
             s = agg_func(node_inputs)
             values[node] = act_func(bias + response * s)
-            
-            outputs = jnp.empty((inputs.shape[0], len(output_nodes)))
+            # TODO why is this not work for mp
+            # outputs = jnp.empty((inputs.shape[0], len(output_nodes)))
+            # outputs = jnp.empty((batch, len(output_nodes)))
+            outputs = [None for _ in range(len(output_nodes))]
             for i, output in enumerate(output_nodes):
-                outputs.at[:, i].set(values[output])
+                # outputs.at[:, i].set(values[output])
+                outputs[i] = values[output]
+            outputs = jnp.array(outputs).T
 
         return outputs
 
+    @staticmethod
+    def eval(weights, biases, responses, inputs, batch, adj_list, genome, config):
+        input_nodes = config.genome_config.input_keys
+        output_nodes = config.genome_config.output_keys
+        assert len(input_nodes) == inputs.shape[1], \
+            f"Incorrect number of input nodes (Expected {len(input_nodes)}, got {inputs.shape[1]})."
+            
+        values = {key: 0 for key in input_nodes + output_nodes}
+        for i in range(inputs.shape[1]):
+            values[input_nodes[i]] = inputs[:, i]
+        
+        for node, links in adj_list:
+            node_inputs = np.empty((batch, len(links)))
+            for idx, (i, o) in enumerate(links):
+                ng = genome.nodes[o]
+                try:
+                    agg_func = genome.aggregation_function_defs.get(ng.aggregation)
+                except:
+                    raise Exception(f"Invalid aggregation function: {ng.aggregation}")
+                try:
+                    act_func = genome.activation_defs.get(ng.activation)
+                except:
+                    raise Exception(f"Invalid activation function: {ng.activation}")
+                bias = biases[o]
+                response = responses[o]
+                w = weights[(i, o)]
+                node_inputs[:, idx] = values[i] * w
+            s = agg_func(node_inputs)
+            values[node] = act_func(bias + response * s)
+            outputs = np.empty((batch, len(output_nodes)))
+            for i, output in enumerate(output_nodes):
+                outputs[:, i] = values[output]
+
+        return outputs
 
 def run(args):
     # Load the config file, which is assumed to live in
@@ -393,12 +512,13 @@ def run(args):
             best_scores = []
             for k in range(5):
                 ec.env._generate_data(type=ec.env.type)
-                observation = ec.env.trainSet
+                ec.env.batch = ec.env.trainSet.shape[0]
+                observation = ec.env.reset()
                 targets = ec.env.target
                 score = 0
                 done = False
                 while not done:
-                    best_action = FeedForwardNetwork.forward(weights, biases, responses, observation, adj_list, best_genome, config)
+                    best_action = FeedForwardNetwork.eval(weights, biases, responses, observation, adj_list, ec.env.batch, best_genome, config)
                     logits = jax.nn.sigmoid(best_action).reshape(-1, 1)
                     pred = jnp.where(logits > 0.5, 1, 0)
                     score = float(jnp.mean(jnp.equal(pred, targets)))
@@ -434,6 +554,8 @@ def run(args):
 
 
 if __name__ == '__main__':
+    
+    mp.set_start_method('spawn') # or 'forkserver'
     
     import argparse
     
