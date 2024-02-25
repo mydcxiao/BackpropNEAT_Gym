@@ -221,6 +221,7 @@ class GymClassificationTask():
         self.num_workers = num_workers
     
     def train_genome(self, params, adj_list, genome, config, batch=10, lr=0.01):
+        #TODO is there a way to keep the env open?
         self.env = make_env(self.game)
         
         prev_fitness = 0
@@ -485,7 +486,7 @@ def run(args):
     pop.add_reporter(stats)
     pop.add_reporter(neat.StdOutReporter(True))
     # Checkpoint every 25 generations or 900 seconds.
-    pop.add_reporter(neat.Checkpointer(25, None))
+    pop.add_reporter(neat.Checkpointer(25, None, os.path.join(args.output_dir, 'checkpoint-')))
 
     # Run until the winner from a generation is able to solve the environment
     # or the user interrupts the process.
@@ -563,6 +564,9 @@ if __name__ == '__main__':
 
     parser.add_argument('-n', '--num_worker', type=int,\
     help='number of cores to use', default=8)
+    
+    parser.add_argument('-o', '--output_dir', type=str,\
+    default='/lab/tmpig7b/u/yxiao-data/backprop_neat/', help='output directory')
 
     args = parser.parse_args()
     
