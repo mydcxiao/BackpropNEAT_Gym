@@ -60,18 +60,18 @@ def make_env(env_name, seed=-1, render_mode=False):
     if env_name.endswith("XOR"):
       # from domain.backprop_gym import XOR
       # trainSet, target  = XOR()
-      env = BackpropClassifyEnv(type="XOR", seed=None)
+      env = BackpropClassifyEnv(type="XOR", seed=0)
       
     elif env_name.endswith("spiral"):
       # from domain.backprop_gym import spiral
       # trainSet, target  = spiral()
-      env = BackpropClassifyEnv(type="spiral", seed=None)
+      env = BackpropClassifyEnv(type="spiral", seed=0)
     
     elif env_name.endswith("circle"):
-      env = BackpropClassifyEnv(type="circle", seed=None)
+      env = BackpropClassifyEnv(type="circle", seed=0)
     
     elif env_name.endswith("gaussian"):
-      env = BackpropClassifyEnv(type="gaussian", seed=None)
+      env = BackpropClassifyEnv(type="gaussian", seed=0)
     
     else:
       env = BackpropClassifyEnv()

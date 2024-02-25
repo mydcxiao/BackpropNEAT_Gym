@@ -28,7 +28,7 @@ class BackpropClassifyEnv(gym.Env):
 
     self.t = 0          # Current batch number
     self.t_limit = 0    # Number of batches if you need them
-    self.batch   = 100 # Number of images per batch
+    self.batch   = 10 # Number of images per batch
     self.seed()
     self.viewer = None
 
@@ -57,6 +57,7 @@ class BackpropClassifyEnv(gym.Env):
   def reset(self):
     ''' Initialize State'''    
     #print('Lucky number', np.random.randint(10)) # same randomness?
+    np.random.seed()
     self.trainOrder = np.random.permutation(len(self.target))
     self.t = 0 # timestep
     self.t_limit = self.target.shape[0]//self.batch

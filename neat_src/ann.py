@@ -342,6 +342,8 @@ def selectAct(action, actSelect, backprop=False):
       action = softmax(action)
     elif actSelect == 'prob':
       action = weightedRandom(np.sum(action,axis=0))
+    elif actSelect == 'sigmoid':
+      action = (np.tanh(action/2.0) + 1.0)/2.0
     else:
       action = action.flatten()
     return action
