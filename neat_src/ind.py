@@ -217,7 +217,7 @@ class Ind():
     mutatedWeights = np.random.rand(1,nConn) < p['prob_mutConn'] # Choose weights to mutate
     weightChange = mutatedWeights * np.random.randn(1,nConn) * p['ann_mutSigma']
     connG[3,:] += weightChange[0]
-    connG[4,[connG[3,:]==0]] = 0 # Disable connections with zero weight
+    connG[4,[connG[3,:]==0]] = 0 # DEBUG: Disable connections with zero weight
     
     # Clamp weight strength [ Warning given for nan comparisons ]  
     connG[3, (connG[3,:] >  p['ann_absWCap'])] =  p['ann_absWCap']
