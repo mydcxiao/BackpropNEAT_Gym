@@ -59,20 +59,19 @@ def viewClassifier(ind, taskName, seed=None):
     # Prepare mesh and predictions as before
     task.env._generate_data(seed=seed)
     X, y = task.env.trainSet, task.env.target
-    
     # Predict logits
     annOut = act(wMat, aVec, task.nInput, task.nOutput, X)
     action = selectAct(annOut, task.actSelect)
     pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
     test_acc = np.mean(pred == y)
     
-    xx, yy = np.meshgrid(np.linspace(X[:, 0].min(), X[:, 0].max(), num=200),
-                         np.linspace(X[:, 1].min(), X[:, 1].max(), num=200))
+    xx, yy = np.meshgrid(np.linspace(X[:, 0].min(), X[:, 0].max(), num=1000),
+                         np.linspace(X[:, 1].min(), X[:, 1].max(), num=1000))
     pred_contour = selectAct(act(wMat, aVec, task.nInput, task.nOutput, np.c_[xx.ravel(), yy.ravel()]), task.actSelect)
     pred_contour = np.where(pred_contour > 0.5, 1, 0).reshape(xx.shape)
     
-    pos_idx = np.where(y == 0)[0]
-    neg_idx = np.where(y == 1)[0]
+    pos_idx = np.where(y == 1)[0]
+    neg_idx = np.where(y == 0)[0]
 
     # Plot setup as before
     ax2.contourf(xx, yy, pred_contour, alpha=0.8, levels=np.linspace(0, 1, 11), cmap=plt.cm.coolwarm)
