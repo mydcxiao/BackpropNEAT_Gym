@@ -34,9 +34,9 @@ class BackpropClassifyEnv(gym.Env):
 
     self.trainSet = trainSet
     self.target   = target
-    
+    self.type = type
     if type:
-      self._generate_data(seed=seed)
+      self._generate_data(type=type, seed=seed)
     
     nInputs = np.shape(self.trainSet)[1]
     high = np.array([1.0]*nInputs)
