@@ -342,6 +342,7 @@ def loss_fn(params, inputs, targets, adj_list, batch, genome, config):
     b = params['biases']
     r = params['responses']
     outputs = FeedForwardNetwork.forward(w, b, r, inputs, batch, adj_list, genome, config)
+    jax.block_until_ready(outputs)
     logit = jax.nn.sigmoid(outputs).reshape(-1, 1)
     logit = jnp.clip(logit, 1e-7, 1 - 1e-7)
     loss = -jnp.mean(targets * jnp.log(logit) + (1 - targets) * jnp.log(1 - logit))
