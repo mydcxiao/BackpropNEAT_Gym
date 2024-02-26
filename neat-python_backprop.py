@@ -231,39 +231,34 @@ class GymClassificationTask():
                 break
         
         return fitness
-        # return np.float32(fitness)
     
     def evaluate_genomes(self, genomes, config, batch=10, lr=0.01):
         t0 = time.time()
-        params_list = []
-        adj_lists = []
+        params_dict = {}
+        adj_list_dict = {}
         for _, g in genomes:
             adj_list, weights, biases, responses = FeedForwardNetwork.create(g, config)
             params = {'weights': weights, 'biases': biases, 'responses': responses}
-            params_list.append(params)
-            adj_lists.append(adj_list)
+            params_dict[g.key] = params
+            adj_list_dict[g.key] = adj_list
         print("Time to create FFN {0}".format(time.time() - t0))
         t0 = time.time()
         
         print("Training {0} epoches".format(self.num_trials))
         if self.num_workers < 2:
             for i, (_, genome) in enumerate(genomes):
-                reward = self.train_genome(params_list[i], adj_lists[i], genome, config, batch, lr)
+                reward = self.train_genome(params_dict[genome.key], adj_list_dict[genome.key], genome, config, batch, lr)
                 genome.fitness = reward
         else:
             with mp.Pool(self.num_workers) as pool:
                 jobs = []
                 for i, (_, genome) in enumerate(genomes):
                     jobs.append(pool.apply_async(self.train_genome,
-                                                 (params_list[i], adj_lists[i], genome, config, batch, lr)))
+                                                 (params_dict[genome.key], adj_list_dict[genome.key], genome, config, batch, lr)))
 
                 for job, (_, genome) in zip(jobs, genomes):
                     reward = job.get(timeout=None)
                     genome.fitness = reward
-        
-        # for _, genome in genomes:
-        #     reward = self.train_genome(genome, config, batch, lr)
-        #     genome.fitness = reward
         
         print("Final training time {0}\n".format(time.time() - t0))
     
@@ -272,6 +267,62 @@ class GymClassificationTask():
         self.env.batch = batch
         state = self.env.reset()
         targets = self.env.get_labels()
+        
+        def forward(weights, biases, responses, inputs, batch, adj_list, genome, config):
+            input_nodes = config.genome_config.input_keys
+            output_nodes = config.genome_config.output_keys
+            assert len(input_nodes) == inputs.shape[1], \
+                f"Incorrect number of input nodes (Expected {len(input_nodes)}, got {inputs.shape[1]})."
+                
+            values = {key: jnp.zeros(inputs.shape[0]) for key in input_nodes + output_nodes}
+            # values = {key: 0 for key in input_nodes + output_nodes}
+            for i in range(inputs.shape[1]):
+                values[input_nodes[i]] = inputs[:, i]
+            
+            for node, links in adj_list:
+                # TODO why is this not work for mp
+                # node_inputs = jnp.zeros((inputs.shape[0], len(links)))
+                node_inputs = jnp.empty((batch, len(links)))
+                # node_inputs = [None for _ in range(len(links))]
+                for idx, (i, o) in enumerate(links):
+                    ng = genome.nodes[o]
+                    try:
+                        agg_func = genome.aggregation_function_defs.get(ng.aggregation)
+                    except:
+                        raise Exception(f"Invalid aggregation function: {ng.aggregation}")
+                    try:
+                        act_func = genome.activation_defs.get(ng.activation)
+                    except:
+                        raise Exception(f"Invalid activation function: {ng.activation}")
+                    bias = biases[o]
+                    response = responses[o]
+                    w = weights[(i, o)]
+                    node_inputs.at[:, idx].set(values[i] * w)
+                    # node_inputs[idx] = values[i] * w
+                # node_inputs = jnp.array(node_inputs).T
+                s = agg_func(node_inputs)
+                values[node] = act_func(bias + response * s)
+                # TODO why is this not work for mp
+                # outputs = jnp.empty((inputs.shape[0], len(output_nodes)))
+                outputs = jnp.empty((batch, len(output_nodes)))
+                # outputs = [None for _ in range(len(output_nodes))]
+                for i, output in enumerate(output_nodes):
+                    outputs.at[:, i].set(values[output])
+                    # outputs[i] = values[output]
+                # outputs = jnp.array(outputs).T
+                
+            return outputs
+        
+        def loss_fn(params, inputs, targets, adj_list, batch, genome, config):
+            w = params['weights']
+            b = params['biases']
+            r = params['responses']
+            # outputs = FeedForwardNetwork.forward(w, b, r, inputs, batch, adj_list, genome, config) # DEBUG
+            outputs = forward(w, b, r, inputs, batch, adj_list, genome, config) # DEBUG
+            logit = jax.nn.sigmoid(outputs).reshape(-1, 1)
+            logit = jnp.clip(logit, 1e-7, 1 - 1e-7)
+            loss = -jnp.mean(targets * jnp.log(logit) + (1 - targets) * jnp.log(1 - logit))
+            return loss
         
         criterion = partial(loss_fn, adj_list=adj_list, batch=self.env.batch, genome=genome, config=config)
         
@@ -291,7 +342,8 @@ class GymClassificationTask():
             if done:
                 state = self.env.trainSet
                 targets = self.env.target
-                outputs = FeedForwardNetwork.forward(params['weights'], params['biases'], params['responses'], state, self.env.batch, adj_list, genome, config)
+                # outputs = FeedForwardNetwork.forward(params['weights'], params['biases'], params['responses'], state, self.env.target.shape[0], adj_list, genome, config)
+                outputs = forward(params['weights'], params['biases'], params['responses'], state, self.env.target.shape[0], adj_list, genome, config)
                 logits = jax.nn.sigmoid(outputs).reshape(-1, 1)
                 pred = jnp.where(logits > 0.5, 1, 0)
                 acc = jnp.mean(jnp.equal(pred, targets))
@@ -337,22 +389,21 @@ def jnp2float(dic):
     return {k: {k1: float(dic[k][k1]) for k1 in dic[k]} for k in dic}
 
 
-def loss_fn(params, inputs, targets, adj_list, batch, genome, config):
-    w = params['weights']
-    b = params['biases']
-    r = params['responses']
-    outputs = FeedForwardNetwork.forward(w, b, r, inputs, batch, adj_list, genome, config)
-    jax.block_until_ready(outputs)
-    logit = jax.nn.sigmoid(outputs).reshape(-1, 1)
-    logit = jnp.clip(logit, 1e-7, 1 - 1e-7)
-    loss = -jnp.mean(targets * jnp.log(logit) + (1 - targets) * jnp.log(1 - logit))
-    return loss
+# def loss_fn(params, inputs, targets, adj_list, batch, genome, config):
+#     w = params['weights']
+#     b = params['biases']
+#     r = params['responses']
+#     outputs = FeedForwardNetwork.forward(w, b, r, inputs, batch, adj_list, genome, config)
+#     logit = jax.nn.sigmoid(outputs).reshape(-1, 1)
+#     logit = jnp.clip(logit, 1e-7, 1 - 1e-7)
+#     loss = -jnp.mean(targets * jnp.log(logit) + (1 - targets) * jnp.log(1 - logit))
+#     return loss
 
 
 class FeedForwardNetwork(object):
     
     def __init__(self):
-        super.__init__()
+        super().__init__()
 
     @staticmethod
     def create(genome, config):
@@ -384,59 +435,61 @@ class FeedForwardNetwork(object):
         nodes = [ng.key for ng in genome.nodes.values()]
         
         for conn_key in connections:
-            genome.connections[conn_key].weight = weights[conn_key]
+            if conn_key in weights:
+                genome.connections[conn_key].weight = weights[conn_key]
             
         for node_key in nodes:
-            genome.nodes[node_key].bias = biases[node_key]
-            genome.nodes[node_key].response = responses[node_key]
+            if node_key in biases:
+                genome.nodes[node_key].bias = biases[node_key]
+                genome.nodes[node_key].response = responses[node_key]
 
-    @staticmethod
-    def forward(weights, biases, responses, inputs, batch, adj_list, genome, config):
-        input_nodes = config.genome_config.input_keys
-        output_nodes = config.genome_config.output_keys
-        assert len(input_nodes) == inputs.shape[1], \
-            f"Incorrect number of input nodes (Expected {len(input_nodes)}, got {inputs.shape[1]})."
+    # @staticmethod #TODO why is this not work for mp
+    # def forward(self, weights, biases, responses, inputs, batch, adj_list, genome, config):
+    #     input_nodes = config.genome_config.input_keys
+    #     output_nodes = config.genome_config.output_keys
+    #     assert len(input_nodes) == inputs.shape[1], \
+    #         f"Incorrect number of input nodes (Expected {len(input_nodes)}, got {inputs.shape[1]})."
             
-        # TODO why is this not work for mp
-        # values = {key: jnp.zeros(inputs.shape[0]) for key in input_nodes + output_nodes}
+    #     # TODO why is this not work for mp
+    #     # values = {key: jnp.zeros(inputs.shape[0]) for key in input_nodes + output_nodes}
         
-        values = {key: 0 for key in input_nodes + output_nodes}
-        for i in range(inputs.shape[1]):
-            values[input_nodes[i]] = inputs[:, i]
+    #     values = {key: 0 for key in input_nodes + output_nodes}
+    #     for i in range(inputs.shape[1]):
+    #         values[input_nodes[i]] = inputs[:, i]
         
-        for node, links in adj_list:
-            # TODO why is this not work for mp
-            # node_inputs = jnp.zeros((inputs.shape[0], len(links)))
-            # node_inputs = jnp.empty((batch, len(links)))
-            node_inputs = [None for _ in range(len(links))]
-            for idx, (i, o) in enumerate(links):
-                ng = genome.nodes[o]
-                try:
-                    agg_func = genome.aggregation_function_defs.get(ng.aggregation)
-                except:
-                    raise Exception(f"Invalid aggregation function: {ng.aggregation}")
-                try:
-                    act_func = genome.activation_defs.get(ng.activation)
-                except:
-                    raise Exception(f"Invalid activation function: {ng.activation}")
-                bias = biases[o]
-                response = responses[o]
-                w = weights[(i, o)]
-                # node_inputs.at[:, idx].set(values[i] * w)
-                node_inputs[idx] = values[i] * w
-            node_inputs = jnp.array(node_inputs).T
-            s = agg_func(node_inputs)
-            values[node] = act_func(bias + response * s)
-            # TODO why is this not work for mp
-            # outputs = jnp.empty((inputs.shape[0], len(output_nodes)))
-            # outputs = jnp.empty((batch, len(output_nodes)))
-            outputs = [None for _ in range(len(output_nodes))]
-            for i, output in enumerate(output_nodes):
-                # outputs.at[:, i].set(values[output])
-                outputs[i] = values[output]
-            outputs = jnp.array(outputs).T
+    #     for node, links in adj_list:
+    #         # TODO why is this not work for mp
+    #         # node_inputs = jnp.zeros((inputs.shape[0], len(links)))
+    #         # node_inputs = jnp.empty((batch, len(links)))
+    #         node_inputs = [None for _ in range(len(links))]
+    #         for idx, (i, o) in enumerate(links):
+    #             ng = genome.nodes[o]
+    #             try:
+    #                 agg_func = genome.aggregation_function_defs.get(ng.aggregation)
+    #             except:
+    #                 raise Exception(f"Invalid aggregation function: {ng.aggregation}")
+    #             try:
+    #                 act_func = genome.activation_defs.get(ng.activation)
+    #             except:
+    #                 raise Exception(f"Invalid activation function: {ng.activation}")
+    #             bias = biases[o]
+    #             response = responses[o]
+    #             w = weights[(i, o)]
+    #             # node_inputs.at[:, idx].set(values[i] * w)
+    #             node_inputs[idx] = values[i] * w
+    #         node_inputs = jnp.array(node_inputs).T
+    #         s = agg_func(node_inputs)
+    #         values[node] = act_func(bias + response * s)
+    #         # TODO why is this not work for mp
+    #         # outputs = jnp.empty((inputs.shape[0], len(output_nodes)))
+    #         # outputs = jnp.empty((batch, len(output_nodes)))
+    #         outputs = [None for _ in range(len(output_nodes))]
+    #         for i, output in enumerate(output_nodes):
+    #             # outputs.at[:, i].set(values[output])
+    #             outputs[i] = values[output]
+    #         outputs = jnp.array(outputs).T
             
-        return outputs
+    #     return outputs
 
     @staticmethod
     def eval(weights, biases, responses, inputs, batch, adj_list, genome, config):
