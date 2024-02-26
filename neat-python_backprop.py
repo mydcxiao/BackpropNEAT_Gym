@@ -434,7 +434,7 @@ class FeedForwardNetwork(object):
                 # outputs.at[:, i].set(values[output])
                 outputs[i] = values[output]
             outputs = jnp.array(outputs).T
-
+            
         return outputs
 
     @staticmethod

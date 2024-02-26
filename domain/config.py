@@ -201,8 +201,8 @@ backprop_cls = Game(env_name='BackpropClassify',
   time_factor=0,
   layers=[20, 20],
   i_act=np.full(2,1),
-  # h_act=[1,3,4,5,6,7,8,9,10,11],
-  h_act=[1,8,9,11], # XOR
+  h_act=[1,3,4,5,6,7,8,9,10,11],
+  # h_act=[1,8,9,11], # XOR
   o_act=np.full(1,1),
   weightCap = 50.0,
   noise_bias=0.0,
@@ -211,6 +211,6 @@ backprop_cls = Game(env_name='BackpropClassify',
   in_out_labels = ['x', 'y', 'prob']
 )
 games['backprop_XOR'] = backprop_cls._replace(env_name='BackpropXOR')
-games['backprop_sprial'] = backprop_cls._replace(env_name='BackpropSpiral')
+games['backprop_spiral'] = backprop_cls._replace(env_name='BackpropSpiral')
 games['backprop_gaussian'] = backprop_cls._replace(env_name='BackpropGaussian')
 games['backprop_circle'] = backprop_cls._replace(env_name='BackpropCircle')

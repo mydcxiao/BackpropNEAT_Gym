@@ -1,6 +1,6 @@
 {
-    "task":"backprop_XOR",
-    "maxGen": 25,
+    "task":"backprop_spiral",
+    "maxGen": 30,
     "popSize": 1000,
     "alg_nReps": 50,
     "alg_speciate": "neat",
