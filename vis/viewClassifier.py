@@ -57,7 +57,7 @@ def viewClassifier(ind, taskName, seed=None):
     
     # ax2 = fig.add_subplot(111)
     # Prepare mesh and predictions as before
-    task.env._generate_data(seed=seed)
+    task.env._generate_data(type=task.env.type, seed=seed)
     X, y = task.env.trainSet, task.env.target
     # Predict logits
     annOut = act(wMat, aVec, task.nInput, task.nOutput, X)
