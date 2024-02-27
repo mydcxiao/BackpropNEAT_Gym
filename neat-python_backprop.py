@@ -250,6 +250,7 @@ class GymClassificationTask():
                 reward = self.train_genome(params_dict[genome.key], adj_list_dict[genome.key], genome, config, batch, lr)
                 genome.fitness = reward
         else:
+            #TODO fix mp training
             with mp.Pool(self.num_workers) as pool:
                 jobs = []
                 for i, (_, genome) in enumerate(genomes):
