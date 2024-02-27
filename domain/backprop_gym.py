@@ -1,11 +1,9 @@
 import logging
-import np
 import gym
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
 import sys
-import math
 import cv2
 import jax
 import jax.numpy as jnp
