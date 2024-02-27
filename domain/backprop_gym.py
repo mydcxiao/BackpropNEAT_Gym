@@ -5,8 +5,8 @@ from gym import spaces
 from gym.utils import seeding
 import numpy as np
 import sys
+import math
 import cv2
-import np
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
