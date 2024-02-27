@@ -1,12 +1,12 @@
 import logging
-import math
+import np
 import gym
 from gym import spaces
 from gym.utils import seeding
 import numpy as np
 import sys
 import cv2
-import math
+import np
 import jax
 import jax.numpy as jnp
 import matplotlib.pyplot as plt
@@ -172,14 +172,14 @@ def circle(num=None, noise=None, seed=None):
             return 0
     rp = np.random.uniform(0,radius*0.5,num//2)
     anglep = np.random.uniform(0,2*np.pi,num//2)
-    xp0 = rp * math.sin(anglep)
-    xp1 = rp * math.cos(anglep)
+    xp0 = rp * np.sin(anglep)
+    xp1 = rp * np.cos(anglep)
     noise = np.random.uniform(-radius, radius, (num//2,2)) * noise / 3
     xp = np.array([xp0, xp1]).T + noise
     rn = np.random.uniform(radius*0.75,radius,num//2)
     anglen = np.random.uniform(0,2*np.pi,num//2)
-    xn0 = rn * math.sin(anglen)
-    xn1 = rn * math.cos(anglen)
+    xn0 = rn * np.sin(anglen)
+    xn1 = rn * np.cos(anglen)
     noise = np.random.uniform(-radius, radius, (num//2,2)) * noise / 3
     xn = np.array([xn0, xn1]).T + noise
     x = np.concatenate((xp,xn))
