@@ -621,7 +621,7 @@ if __name__ == '__main__':
     help='number of cores to use', default=8)
     
     parser.add_argument('-o', '--output_dir', type=str,\
-    default='/lab/tmpig7b/u/yxiao-data/backprop_neat/', help='output directory')
+    default='', help='output directory')
 
     args = parser.parse_args()
     

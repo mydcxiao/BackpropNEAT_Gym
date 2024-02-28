@@ -1,109 +1,59 @@
-# prettyNEAT
-![swingup](demo/img/swing.gif) ![biped](demo/img/biped.gif)
-![ant](demo/img/ant.gif) ![racer](demo/img/race.gif)
+# BackpropNEAT_Gym
+![slimevolley](assets/slimevolley.gif) ![backprop_XOR](assets/backprop_XOR.png)
+![backprop_XOR](assets/backprop_circle.png) ![backprop_XOR](assets/backprop_spiral.png)
 
+Back-Propagation Neuroevolution of Augmenting Topologies (BackpropNEAT) algorithm in numpy and jax, built for multicore use and OpenAI's gym interface.
 
-Neuroevolution of Augmenting Topologies (NEAT) algorithm in numpy, built for multicore use and OpenAI's gym interface.
+This repo is based on [PrettyNEAT](https://github.com/google/brain-tokyo-workshop/tree/master/WANNRelease/prettyNEAT) and [neat-python](https://github.com/CodeReclaimers/neat-python). Keeps the original functionalities of *PrettyNEAT* (fixed some bugs though) and added JAX backpropagation support to update weights of the neural network. For neat-python, it's keeped as a submodule with no modification. While inherited class and interface is used in the training scripts for JAX backpropagation support. Additional experiments are added as OpenAI's Gym interface for [slimevolley](https://github.com/hardmaru/slimevolleygym) and simple backprop two-class classification. 
 
-Original paper by Ken Stanley and Risto Miikkulainen: [Evolving Neural Networks Through Augmenting Topologies](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.28.5457&rep=rep1&type=pdf)
+Original NEAT paper by Ken Stanley and Risto Miikkulainen: [Evolving Neural Networks Through Augmenting Topologies](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.28.5457&rep=rep1&type=pdf)
 
-## (*Update Feb 2024*)
+Original WANN paper (based on prettyNEAT) by Adam Gaier and David Ha: [Weight Agnostic Neural Networks](https://arxiv.org/abs/1906.04358)
 
 ## Dependencies
 
 Core algorithm tested with:
 
-- Python 3.5.3 (*newer 3.11.7 works*)
+- Python <= 3.11 (compatible with mpi4py)
 
-- NumPy 1.15.2 (`pip install numpy`) (*newer 1.26.4 works*)
+- NumPy
 
-- mpi4py 3.0.1 (`pip install mpi4py`, sometimes not work, try `conda install mpi4py`) (*newer 3.1.4 works*)
+- mpi4py
 
-- OpenAI Gym 0.9.6 (`pip install gym` -- installation details [here](https://github.com/openai/gym)) (*can only be 0.9.6*)
+- OpenAI Gym 0.9.6 (`pip install gym` -- installation details [here](https://github.com/openai/gym))
 
-- *Slime Volley Gym 0.1.0* (`pip install slimevolleygym` -- installation details [here](https://github.com/hardmaru/slimevolleygym)) (added for neural slime volleyball game)
+- Slime Volley Gym 0.1.0 (`pip install slimevolleygym` -- installation details [here](https://github.com/hardmaru/slimevolleygym))
 
-- *pyglet 1.5.11* (*can only be under this version*)
+- pyglet <= 1.5.17
+
+- opencv
 
 Domains tested with:
 
-- Cart-pole Swing-up (included, but requires OpenAI gym)
+- Neural Slime Volleyball
 
-- Bipedal Walker: Box2d (see OpenAI gym installation)
+- BackpropGym
 
-- Quadruped (Ant) Walker: PyBullet 1.6.3 (`pip install pybullet`)
-
-- MNIST: Mnist utilities 0.2.2 (`pip install mnist`)
-
-- VAE Racer: 
-    - Tensorflow 1.8 (`pip install tensorflow==1.8.0`)
-    - Pretrained VAE (in [wannRelease](../) -- copy to root to use, e.g: `cp -r ../vae .`)
-
-- *Slime Volleyball*: 2d (similar to OpenAI Gym)
-
-To tune weights of produced network topologies
+Tune weights of produced network topologies with CMA-ES:
 
 - CMA-ES: cma 2.6.0 (`pip install cma`)
 
+## Training
 
-
-## Training and Viewing Results
-
-![swingup](demo/img/swing.gif) ![swingup](demo/img/swing.gif)
-
-
-The 'cartpole_swingup' task doesn't have any dependencies and is set as the default task, try it with the default parameters:
-
-Training command:
-```
-python neat_train.py
-```
-
-To view the performance of a trained controller (default `log/test_best.out` loaded):
-
-```
-python neat_test.py
-```
-
-To load and test a specific network:
-```
-python neat_test.py -i demo/swingup/test_best.out
-```
-
-
-## Using prettyNEAT
+### Using prettyNEAT
 
 Check out the `prettyNeat_demo.ipynb` notebook for example usage.
 
-prettyNeat uses an ask/tell pattern to handle parallelization:
+Algorithm hyperparameters are stored in a .json file. 
+- default parameters specified with `-d`
+- modification with a `-p`
+- num_workers with `-n`
+- output_exp_prefix `-o`
 
 ```
-  neat = Neat(hyp)  # Initialize Neat with hyperparameters
-  for gen in range(hyp['maxGen']):        
-    pop = neat.ask()            # Get newly evolved individuals from NEAT  
-    reward = batchMpiEval(pop)  # Send population to workers to evaluate
-    neat.tell(reward)           # Send fitness values back to NEAT    
+python neat_train.py -d p/neat_default.json -o default -n 8
 ```
 
-The number of workers can be specified when called from the command line:
-
-```
-python neat_train.py -n 8
-```
-
-
-Algorithm hyperparameters are stored in a .json file. Default parameters specified with `-d`, modification with a `-p`:
-
-```
-python neat_train.py -d p/neat_default.json
-```
-
-or to use default except for certain changes
-
-```
-python neat_train.py -p p/swingup.json       # Swing up with standard parameters
-python neat_train.py -p p/swing_allAct.json  # Swing up but allow hidden nodes to have several activations
-```
 The full list of hyperparameters is explained in [hypkey.txt](p/hypkey.txt)
 
 Individuals are saved as 2D numpy arrays and after training can be retested and viewed with neat_view:
@@ -112,56 +62,35 @@ Individuals are saved as 2D numpy arrays and after training can be retested and 
 python neat_test.py -i log/test_best.out --view True
 ```
 
-
-## Data Gathering and Visualization
-
-Data about each run is stored by default in the `log` folder with the `test` prefix, though a new prefix can be specified:
-
-```
-python neat_train.py -o myExperiment_
-```
-Output files will still be placed in the 'log' folder but prepended with the 'myExperiment_' prefix
-
-In addition to the best performing individual, prettyNEAT regularly updates a `_stats.out` file with run statistics. These statistics are stored as comma seperated values, and some helper functions are shown to display these statistics as well as the topology of the evolved networks.
+### PrettyNEAT Data Gathering and Visualization
 
 see `prettyNeat_demo.ipynb` notebook for example usage.
 
----
-## Extensions and Differences from Canonical NEAT
 
-I will tried to implement NEAT faithfully to the original paper, and the purpose of this code is a jumping off point for other experiments so I will try to leave it mostly pristine. A few key differences and common extensions have been included:
+### Using neat-python
 
-- Compatibility threshold update
-    - The compatibility threshold is regularly updated to keep the number of species near a desired number. Though use of this update is widespread and mentioned on the [NEAT User's Page](https://www.cs.ucf.edu/~kstanley/neat.html), to my knowledge it has never been explicitly mentioned in a publication.
+config settings are in config and config_backprop for slimevolley and backprop classification respectively.
 
-- Activation functions
-    - Unless a specific activation function to be used by all hidden nodes is specified in the hyperparameters, when a new node is created it can chosen from a list of activation functions defined by the task. A probability of mutating the activation function is also defined. This allows the code to easily handle extensions for HyperNEAT and CPPN experiments.
-    
-- Rank-based Fitness
-    - The canonical NEAT uses raw fitness values to determine the relative fitness of individuals and species. This can cause scaling problems, and can't handle negative fitness values. PrettyNEAT instead ranks the population and assigns each individual a real-valued fitness based on this ranking.
+SlimeVolley:
 
-- Multiobjectivization
-    - Many extensions of NEAT involve optimizing for additional objectives (age, number of connections, novelty, etc) and we include non-dominated sorting of the population by multiple objectives. The probability that these alternate objectives are applied can also be tuned (e.g. normal optimization, but 20% chance of ranking based on fitness _and_ number of connections). This can be used with or without speciation.
-    
-- Weight Tuning with CMA-ES
-    - Networks produced by PrettyNEAT are exported in the form of weight matrices and a vector of activation functions. We provide an interface to further tune the weights of these networks with CMA-ES: 
-    
-    ```
-    python cmaes.py -i log/test_best.out
-    ```
+```
+python neat-python_slime.py
+```
 
---- 
-## Forks using prettyNEAT
-- [Weight Agnostic Neural Networks (WANN)](../prettyNEAT_WANN)
+Backprop NEAT:
 
-<!---
-- Additional extensions are kept as separate forks and can seen here:
-    - [PicBreeder](link)
-    - [HyperNEAT](link)
-    - [CPPN-MapElites](link)
-    - [AutoGrad for NEAT](link)
-    - [Surrogate-Assisted NEAT](link)
---->
+- num_workers `-n` 
+- output_dir `-o` 
+
+```
+python neat-python_backprop.py
+```
+*Compatibility problems with python multiprocessing, use single worker now*
+
+### Visualization
+
+Refer to neat-python [examples](https://github.com/CodeReclaimers/neat-python/tree/master/examples)
+
 -----------
 
 On Windows, it is easiest to install mpi4py as follows:
@@ -177,22 +106,4 @@ python setup.py install
 Modify the train.py script and replace mpirun with mpiexec and -np with -n
 
 
----
-
-### Citation
-For attribution in academic contexts, please cite this work as
-
-```
-@article{wann2019,
-  author = {Adam Gaier and David Ha},  
-  title  = {Weight Agnostic Neural Networks},  
-  eprint = {arXiv:1906.04358},  
-  url    = {https://weightagnostic.github.io},  
-  note   = "\url{https://weightagnostic.github.io}",  
-  year   = {2019}  
-}
-```
-
-## Disclaimer
-
-This is not an official Google product.
+-----------
