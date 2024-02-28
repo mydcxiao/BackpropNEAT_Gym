@@ -1,6 +1,14 @@
 # BackpropNEAT_Gym
-![slimevolley](assets/slimevolley.gif) ![backprop_XOR](assets/backprop_XOR.png)
-![backprop_circle](assets/backprop_circle.png) ![backprop_spiral](assets/backprop_spiral.png)
+<table>
+  <tr>
+    <td><img src="assets/slimevolley.gif" alt="slimevolley" width="200"/></td>
+    <td><img src="assets/backprop_XOR.png" alt="backprop_XOR" width="200"/></td>
+  </tr>
+  <tr>
+    <td><img src="assets/backprop_circle.png" alt="backprop_circle" width="200"/></td>
+    <td><img src="assets/backprop_spiral.png" alt="backprop_spiral" width="200"/></td>
+  </tr>
+</table>
 
 Back-Propagation Neuroevolution of Augmenting Topologies (BackpropNEAT) algorithm in numpy and jax, built for multicore use and OpenAI's gym interface.
 
