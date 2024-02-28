@@ -1,6 +1,6 @@
 # prettyNEAT
-![swingup](demo/img/swing.gif) ![biped](demo/img/biped.gif)
-![ant](demo/img/ant.gif) ![racer](demo/img/race.gif)
+![swingup](../demo/img/swing.gif) ![biped](../demo/img/biped.gif)
+![ant](../demo/img/ant.gif) ![racer](../demo/img/race.gif)
 
 
 Neuroevolution of Augmenting Topologies (NEAT) algorithm in numpy, built for multicore use and OpenAI's gym interface.
