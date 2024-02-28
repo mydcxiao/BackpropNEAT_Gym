@@ -58,9 +58,6 @@ def getNodeOrder(nodeG,connG):
   connMat = wMat[nIns+nOuts:,nIns+nOuts:]
   connMat[connMat!=0] = 1
   
-  # gradMask = np.where(wMat == 0, 0, 1).astype(np.float64) # typecast necessary for comm
-  # wMat[src,dest] = conn[3,:]
-
   # Topological Sort of Hidden Nodes
   edge_in = np.sum(connMat,axis=0)
   Q = np.where(edge_in==0)[0]  # Start with nodes with no incoming connections
@@ -80,7 +77,6 @@ def getNodeOrder(nodeG,connG):
   Q += nIns+nOuts
   Q = np.r_[lookup[:nIns], Q, lookup[nIns:nIns+nOuts]]
   wMat = wMat[np.ix_(Q,Q)]
-  # gradMask = gradMask[np.ix_(Q,Q)]
   gradMask = np.where((wMat == 0) | (np.isnan(wMat)), 0, 1).astype(np.float64) # typecast necessary for comm
   
   assert gradMask.shape == wMat.shape, "gradMask and wMat should have the same shape"
@@ -177,14 +173,10 @@ def act(weights, aVec, nInput, nOutput, inPattern, backprop=False, nNodes=None, 
   else:   
   # Turn weight vector into weight matrix
     if jnp.ndim(weights) < 2:
-        # nNodes = int(jnp.sqrt(jnp.shape(weights)[0]))
         wMat = jnp.reshape(weights, (nNodes, nNodes))
         gradMask = jnp.reshape(gradMask, (nNodes, nNodes))
     else:
-        # nNodes = jnp.shape(weights)[0]
         wMat = weights
-    # wMat = jnp.where(jnp.isnan(wMat), 0 , wMat)
-    # jax.debug.print("gradMask in act {}", gradMask) #correct
     wMat = stop_gradient(wMat * (1 - gradMask)) + wMat * gradMask
 
     # Vectorize input

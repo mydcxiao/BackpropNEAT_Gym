@@ -72,8 +72,6 @@ class Ind():
     wVec[np.isnan(wVec)] = 0
     self.wVec  = wVec
     self.nConn = np.sum(wVec!=0)
-    # print("gradMask in express", self.gradMask) # no problem
-    # self.nConn = np.sum(self.conn[4,:])
     #   return True
     # else:
     #   return False
@@ -83,8 +81,6 @@ class Ind():
     # if order is not False:
     assert order is not False, 'Topological sort failed'
     wMat = wVec.reshape(np.shape(self.wMat))
-    # self.wMat = copy.deepcopy(wVec.reshape(np.shape(self.wMat)))
-    # self.wVec = copy.deepcopy(wVec)
     node_perm = self.node[0,order]
     for i in range(len(self.conn[0])):
       value = wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]

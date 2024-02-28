@@ -163,11 +163,6 @@ def circle(num=None, noise=None, seed=None):
     if num == None: num = 200
     if noise == None: noise = 0.5
     radius = 5.0
-    def getLabel(x):
-        if x[0]**2 + x[1]**2 < (radius*0.5)**2:
-            return 1
-        else:
-            return 0
     rp = np.random.uniform(0,radius*0.5,num//2)
     anglep = np.random.uniform(0,2*np.pi,num//2)
     xp0 = rp * np.sin(anglep)
