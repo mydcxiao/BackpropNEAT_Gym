@@ -1,12 +1,12 @@
 # BackpropNEAT_Gym
 <table>
   <tr>
-    <td><img src="assets/slimevolley.gif" alt="slimevolley" width="200"/></td>
-    <td><img src="assets/backprop_XOR.png" alt="backprop_XOR" width="200"/></td>
+    <td><img src="assets/slimevolley.gif" alt="slimevolley" width="450"/></td>
+    <td><img src="assets/backprop_XOR.png" alt="backprop_XOR" width="450"/></td>
   </tr>
   <tr>
-    <td><img src="assets/backprop_circle.png" alt="backprop_circle" width="200"/></td>
-    <td><img src="assets/backprop_spiral.png" alt="backprop_spiral" width="200"/></td>
+    <td><img src="assets/backprop_circle.png" alt="backprop_circle" width="450"/></td>
+    <td><img src="assets/backprop_spiral.png" alt="backprop_spiral" width="450"/></td>
   </tr>
 </table>
 
