@@ -1,6 +1,6 @@
 {
     "task":"backprop_spiral",
-    "maxGen": 50,
+    "maxGen": 100,
     "popSize": 100,
     "alg_nReps": 30,
     "alg_speciate": "neat",

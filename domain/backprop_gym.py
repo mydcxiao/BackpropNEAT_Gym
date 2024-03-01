@@ -130,7 +130,7 @@ def spiral(num=None, noise=None, seed=None):
     '''
     if seed: np.random.seed(seed)
     if num == None: num = 200
-    if noise == None: noise = 0.3
+    if noise == None: noise = 0.5
     r = np.linspace(0,1,num//2, endpoint=False) * 6.0
     tp = np.linspace(0,1.75*2*np.pi,num//2, endpoint=False)
     tn = np.linspace(0,1.75*2*np.pi,num//2, endpoint=False) + np.pi
