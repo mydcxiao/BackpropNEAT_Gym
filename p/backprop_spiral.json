@@ -1,7 +1,7 @@
 {
     "task":"backprop_spiral",
     "maxGen": 100,
-    "popSize": 100,
+    "popSize": 200,
     "alg_nReps": 30,
     "alg_speciate": "neat",
     "alg_probMoo": 0.0,
@@ -19,7 +19,7 @@
     "select_tournSize": 4,
     "spec_compatMod": 0.25,
     "spec_dropOffAge": 64,
-    "spec_target": 5,
+    "spec_target": 10,
     "spec_thresh": 2.0,
     "spec_threshMin": 2.0,
     "spec_geneCoef": 1,
