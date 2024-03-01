@@ -132,10 +132,10 @@ def spiral(num=None, noise=None, seed=None):
     if num == None: num = 200
     if noise == None: noise = 0.5
     r = np.linspace(0,1,num//2, endpoint=False) * 6.0
-    tp = np.linspace(0,1.75*2*np.pi,num//2, endpoint=False)
-    tn = np.linspace(0,1.75*2*np.pi,num//2, endpoint=False) + np.pi
-    xp = np.array([r*np.sin(tp), r*np.cos(tp)]).T + np.random.uniform(-noise,noise,(num//2,2))
-    xn = np.array([r*np.sin(tn), r*np.cos(tn)]).T + np.random.uniform(-noise,noise,(num//2,2))
+    tp = np.linspace(0,1,num//2, endpoint=False) * 1.75 * 2 * np.pi
+    tn = (np.linspace(0,1,num//2, endpoint=False) * 1.75 * 2 * np.pi) + np.pi
+    xp = np.array([r*np.sin(tp), r*np.cos(tp)]).T + np.random.uniform(-1,1,(num//2,2)) * noise
+    xn = np.array([r*np.sin(tn), r*np.cos(tn)]).T + np.random.uniform(-1,1,(num//2,2)) * noise
     x = np.concatenate((xp,xn))
     y = np.zeros(num)
     y[num//2:] = 1
