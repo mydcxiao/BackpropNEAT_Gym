@@ -65,7 +65,7 @@ def make_env(env_name, seed=-1, render_mode=False):
     elif env_name.endswith("Spiral"):
       # from domain.backprop_gym import spiral
       # trainSet, target  = spiral()
-      env = BackpropClassifyEnv(type="spiral", seed=0)
+      env = BackpropClassifyEnv(type="spiral", seed=None)
     
     elif env_name.endswith("Circle"):
       env = BackpropClassifyEnv(type="circle", seed=0)
