@@ -444,7 +444,7 @@ class Ind():
     nOuts = len(nodeG[0,nodeG[1,:] == 2])
     
     # Mutate Activation
-    start = 1+nIns+nOuts
+    start = nIns+nOuts
     end = nodeG.shape[1]           
     if start != end:
       mutNode = np.random.randint(start,end)
