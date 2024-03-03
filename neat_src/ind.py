@@ -219,6 +219,9 @@ class Ind():
     connG[3, (connG[3,:] >  p['ann_absWCap'])] =  p['ann_absWCap']
     connG[3, (connG[3,:] < -p['ann_absWCap'])] = -p['ann_absWCap']
     
+    if (np.random.rand() < p['prob_mutAct']):
+      nodeG, innov = self.mutAct(connG, nodeG, innov, gen, p)
+    
     if (np.random.rand() < p['prob_addNode']) and np.any(connG[4,:]==1):
       connG, nodeG, innov = self.mutAddNode(connG, nodeG, innov, gen, p)
     
@@ -405,3 +408,53 @@ class Ind():
         break;
 
     return connG, innov
+
+  def mutAct(self, connG, nodeG, innov, gen, p):
+    """Randomly alter activation function of a node 
+
+    Args:
+      child    - (Ind) - individual to be mutated
+        .conns - (np_array) - connection genes
+                [5 X nUniqueGenes] 
+                [0,:] == Innovation Number (unique Id)
+                [1,:] == Source Node Id
+                [2,:] == Destination Node Id
+                [3,:] == Weight Value
+                [4,:] == Enabled?  
+        .nodes - (np_array) - node genes
+                [3 X nUniqueGenes]
+                [0,:] == Node Id
+                [1,:] == Type (1=input, 2=output 3=hidden 4=bias)
+                [2,:] == Activation function (as int)
+      innov    - (np_array) - innovation record
+                [5 X nUniqueGenes]
+                [0,:] == Innovation Number
+                [1,:] == Source
+                [2,:] == Destination
+                [3,:] == New Node?
+                [4,:] == Generation evolved
+
+    Returns:
+        child   - (Ind)      - newly created individual
+        innov   - (np_array) - innovation record
+
+    """
+
+    nIns = len(nodeG[0,nodeG[1,:] == 1]) + len(nodeG[0,nodeG[1,:] == 4])
+    nOuts = len(nodeG[0,nodeG[1,:] == 2])
+    
+    # Mutate Activation
+    start = 1+nIns+nOuts
+    end = nodeG.shape[1]           
+    if start != end:
+      mutNode = np.random.randint(start,end)
+      newActPool = listXor([int(nodeG[2,mutNode])], list(p['ann_actRange']))
+      nodeG[2,mutNode] = int(newActPool[np.random.randint(len(newActPool))])
+
+    return nodeG, innov
+
+# -- Utilties ------------------------------------------------------------ -- #
+def listXor(b,c):
+  """Returns elements in lists b and c that they don't share"""
+  A = [a for a in b+c if (a not in b) or (a not in c)]
+  return A
