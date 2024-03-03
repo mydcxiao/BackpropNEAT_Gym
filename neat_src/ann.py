@@ -299,7 +299,7 @@ def applyAct(actId, x, backprop=False):
       value = jnp.square(x)
     
     elif actId == 12: # True Inverse
-      value = jnp.where(x != 0, 1/x, 0)
+      value = jnp.where(x != 0, 1/x, x)
       
     else:
       value = x
