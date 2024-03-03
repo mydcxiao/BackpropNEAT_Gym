@@ -268,13 +268,11 @@ def applyAct(actId, x, backprop=False):
     if actId == 1:   # Linear
       value = x
 
-    if actId == 2:   # Unsigned Step Function
-      value = 1.0*(x>0.0)
-      raise ValueError("Step function not differentiable")
-      #value = (np.tanh(50*x/2.0) + 1.0)/2.0
+    if actId == 2:   # Unsigned Step Function (use clamp for backpropagation)
+      value = jnp.clip(x, 0, 1)
 
     elif actId == 3: # Sin
-      value = jnp.sin(jnp.pi*x) 
+      value = jnp.sin(x) 
 
     elif actId == 4: # Gaussian with mean 0 and sigma 1
       value = jnp.exp(-jnp.multiply(x, x) / 2.0)
@@ -295,10 +293,13 @@ def applyAct(actId, x, backprop=False):
       value = jnp.maximum(0, x)   
 
     elif actId == 10: # Cosine
-      value = jnp.cos(jnp.pi*x)
+      value = jnp.cos(x)
 
     elif actId == 11: # Squared
       value = jnp.square(x)
+    
+    elif actId == 12: # True Inverse
+      value = jnp.where(x != 0, 1/x, 0)
       
     else:
       value = x
