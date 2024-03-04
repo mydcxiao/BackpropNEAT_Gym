@@ -146,14 +146,12 @@ class GymTask():
       connPenalty = 0.03
       
       if backprop_eval:
-        self.env.batch = self.env.trainSet.shape[0]
-        state = self.env.reset()
-        y = self.env.get_labels()
-        self.env.t = 0
+        state = self.env.trainSet
+        y = self.env.target
         annOut = act(wVec, aVec, self.nInput, self.nOutput, state)
         action = selectAct(annOut, self.actSelect)
         pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
-        error = np.mean(np.abs(pred - y)) + 1e-8
+        error = np.mean(np.abs(pred - y))
         nConn = np.count_nonzero(wVec)
         totalReward = -error * np.sqrt(1+connPenalty * nConn)
         return totalReward
@@ -178,25 +176,26 @@ class GymTask():
             return loss
             
         loss = partial(forward, aVec=aVec, input=self.nInput, output=self.nOutput, actSelect=self.actSelect, backprop=backprop, nNodes=nNodes, gradMask=gradMask)
-        # loss = jit(loss) # debug
+        loss = jit(loss)
         
         totalReward = 0
         done = False
         avg_vel = 0
         alpha = 0.99
         eps = 1e-8
-        pre_loss = 0
+        # pre_loss = 0
         while not done:
           y = self.env.get_labels()
           # wVec, state, y = device_put(wVec), device_put(state), device_put(y)
-          cur_loss, grads = value_and_grad(loss)(wVec, state=state, y=y)
+          # cur_loss, grads = value_and_grad(loss)(wVec, state=state, y=y)
+          grads = grad(loss)(wVec, state=state, y=y)
           avg_vel = alpha * avg_vel + (1 - alpha) * jnp.square(grads)
           wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.square(avg_vel)) + eps))
           state, _, done, _ = self.env.step(None)
           # early stopping
-          if jnp.abs(pre_loss - cur_loss) < 1e-3:
-            done = True
-          pre_loss = cur_loss
+          # if jnp.abs(pre_loss - cur_loss) < 1e-6:
+          #   done = True
+          # pre_loss = cur_loss
           # if view:
           #   if self.needsClosed:
           #     self.env.render(close=done)  
@@ -210,7 +209,7 @@ class GymTask():
             annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state, False, nNodes)
             action = selectAct(annOut, self.actSelect, False)
             pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
-            error = np.mean(np.abs(pred - y)) + 1e-8
+            error = np.mean(np.abs(pred - y))
             totalReward = -error * np.sqrt(1+connPenalty * nConn)
             break
         jax.clear_caches()

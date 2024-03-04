@@ -405,7 +405,7 @@ class Ind():
         if innov is not None:
           newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
           innov = np.hstack((innov,newInnov[:,None]))
-        break;
+        break
 
     return connG, innov
 

@@ -47,10 +47,10 @@ def tiedRank(X):
   for i in range(1, n):  
      if Z[i][0] != Z[i-1][0]:
        for j in range(start, i):  
-         Rx[Z[j][1]] = float(start+1+i)/2.0;
+         Rx[Z[j][1]] = float(start+1+i)/2.0
        start = i
   for j in range(start, n):  
-    Rx[Z[j][1]] = float(start+1+n)/2.0;
+    Rx[Z[j][1]] = float(start+1+n)/2.0
 
   return np.asarray(Rx)
 

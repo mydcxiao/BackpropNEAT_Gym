@@ -88,27 +88,52 @@ def assignSpecies(self, species, pop, p):
     iSpec = 0
   else:
     # Remove existing members
+    # for iSpec in range(len(species)):
+    #   species[iSpec].members = []
+    # Create new seeds
+    unspeciated = set(range(len(pop)))
     for iSpec in range(len(species)):
+      candidates = []
+      for gid in unspeciated:
+        g = pop[gid]
+        d = self.compatDist(species[iSpec].seed.conn, g.conn)
+        candidates.append((d, gid))
+      # The new representative is the genome closest to the current representative.
+      _, new_seed_id = min(candidates, key=lambda x: x[0])
+      new_seed = pop[new_seed_id]
+      species[iSpec].seed = new_seed
+      species[iSpec].bestFit = new_seed.fitness
+      species[iSpec].bestInd = new_seed
+      # species[iSpec].members = [new_seed]
       species[iSpec].members = []
+      unspeciated.remove(new_seed_id)
 
+  assert p['spec_thresh'] > 0, "ERROR: Species threshold must be positive"
   # Assign members of population to first species within compat distance
   for i in range(len(pop)):
     assigned = False
+    candidates = []
     for iSpec in range(len(species)):
       ref = np.copy(species[iSpec].seed.conn)
       ind = np.copy(pop[i].conn)
       cDist = self.compatDist(ref,ind)
       if cDist < p['spec_thresh']:
-        pop[i].species = iSpec
-        species[iSpec].members.append(pop[i])
-        assigned = True
-        break
-
+      #   pop[i].species = iSpec
+      #   species[iSpec].members.append(pop[i])
+      #   assigned = True
+      #   break
+        candidates.append((cDist, iSpec))
+    # find best species to assign to
+    if len(candidates) > 0:
+      _, best_iSpec = min(candidates, key=lambda x: x[0])
+      pop[i].species = best_iSpec
+      species[best_iSpec].members.append(pop[i])
+      assigned = True
     # If no seed is close enough, start your own species
     if not assigned:
       pop[i].species = iSpec+1
       species.append(Species(pop[i]))
-
+  
   return species, pop
 
 def assignOffspring(self, species, pop, p):

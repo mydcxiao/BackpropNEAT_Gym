@@ -57,7 +57,8 @@ def recombine(self, species, innov, gen):
     pop[-numberToCull:] = []     
 
   # Elitism - keep best individuals unchanged
-  nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
+  # nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
+  nElites = int(np.ceil(len(pop)*p['select_eliteRatio'])) # Keep at least one
   for i in range(nElites):
     children.append(pop[i])
     nOffspring -= 1
@@ -66,20 +67,37 @@ def recombine(self, species, innov, gen):
     # Get parent pairs via tournament selection
     # -- As individuals are sorted by fitness, index comparison is 
     # enough. In the case of ties the first individual wins
-    parentA = np.random.randint(len(pop),size=(nOffspring,p['select_tournSize']))
+    
+    # Modified to let every individual have a chance to be a parent
+    # parentA = np.arange(min(len(pop), nOffspring))
+    # if parentA.shape[0] < nOffspring:
+    #   parentA = np.concatenate((parentA, np.random.randint(nElites, size=nOffspring - parentA.shape[0])))
+    # parentA = parentA.reshape(nOffspring, 1)
+    
+    parentA = np.random.randint(len(pop),size=(nOffspring,p['select_tournSize'])) 
     parentB = np.random.randint(len(pop),size=(nOffspring,p['select_tournSize']))
     parents = np.vstack( (np.min(parentA,1), np.min(parentB,1) ) )
     parents = np.sort(parents,axis=0) # Higher fitness parent first    
     
     # Breed child population
+    used = set()
     for i in range(nOffspring):  
+      if parents[0,i] in used:
+        p1 = np.random.choice(2)
+      else:
+        p1 = 0
+      p2 = 1 - p1
       if np.random.rand() > p['prob_crossover']:
         # Mutation only: take only highest fit parent
-        child, innov = pop[parents[0,i]].createChild(p,innov,gen)
+        # child, innov = pop[parents[0,i]].createChild(p,innov,gen)
+        child, innov = pop[parents[p1,i]].createChild(p,innov,gen)
       else:
-        # Crossover
-        child, innov = pop[parents[0,i]].createChild(p,innov,gen,\
-                  mate=pop[parents[1,i]])
+        # # Crossover
+        # child, innov = pop[parents[0,i]].createChild(p,innov,gen,\
+        #           mate=pop[parents[1,i]])
+        child, innov = pop[parents[p1,i]].createChild(p,innov,gen,\
+                  mate=pop[parents[p2,i]])
+      used.add(parents[p1,i])
 
       child.express()
       children.append(child)      
