@@ -1,5 +1,5 @@
 import numpy as np
-import copy
+from utils import listXor
 from .ann import getLayer, getNodeOrder
 
 
@@ -266,6 +266,7 @@ class Ind():
       innov    - (np_array) - updated innovation record
 
     """
+    assert innov is not None, 'Innovation record required for addNode mutation'
     if innov is None:
       newNodeId = int(max(nodeG[0,:]+1))
       newConnId = connG[0,-1]+1    
@@ -281,8 +282,28 @@ class Ind():
     
     # Create new node
     newActivation = p['ann_actRange'][np.random.randint(len(p['ann_actRange']))]
-    newNode = np.array([[newNodeId, 3, newActivation]]).T
+    # newNode = np.array([[newNodeId, 3, newActivation]]).T
     
+    # Deduplicate innovations
+    dup = False
+    innovTo = innov[3, (innov[1,:]==connG[:,connSplit][1]) & (innov[3,:]!=-1)]
+    innovFrom = innov[3, (innov[2,:]==connG[:,connSplit][2]) & (innov[3,:]!=-1)]
+    nodesID = np.intersect1d(innovTo,innovFrom, assume_unique=True) # Note there exists self-duplication and cross-duplication
+    np.random.shuffle(nodesID)
+    for nodeID in nodesID:
+        nodeInnov = innov[:,innov[3,:]==nodeID]
+        assert nodeInnov.shape[1] == 1, 'Innovation record corrupted'
+        if nodeG[:,nodeG[0,:]==nodeID].shape[1] == 0: # check if it's self-duplication
+          newNodeId = nodeID
+          newConnId = nodeInnov[0,0]
+          dup = True
+          break
+        else:
+          if np.random.rand() >= p['prob_enable'] * p['prob_addNode']:
+            return connG, nodeG, innov
+          break
+      
+    newNode = np.array([[newNodeId, 3, newActivation]]).T
     # Add connections to and from new node
     # -- Effort is taken to minimize disruption from node addition:
     # The 'weight to' the node is set to 1, the 'weight from' is set to the
@@ -305,10 +326,15 @@ class Ind():
         
     # Record innovations
     if innov is not None:
-      newInnov = np.empty((5,2))
-      newInnov[:,0] = np.hstack((connTo[0:3], newNodeId, gen))   
-      newInnov[:,1] = np.hstack((connFrom[0:3], -1, gen)) 
-      innov = np.hstack((innov,newInnov))
+      # newInnov = np.empty((5,2))
+      # newInnov[:,0] = np.hstack((connTo[0:3], newNodeId, gen))   
+      # newInnov[:,1] = np.hstack((connFrom[0:3], -1, gen))
+      # innov = np.hstack((innov,newInnov))
+      if not dup:
+        newInnov = np.empty((5,2))
+        newInnov[:,0] = np.hstack((connTo[0:3], newNodeId, gen))   
+        newInnov[:,1] = np.hstack((connFrom[0:3], -1, gen)) 
+        innov = np.hstack((innov,newInnov))
       
     # Add new structures to genome
     nodeG = np.hstack((nodeG,newNode))
@@ -354,6 +380,7 @@ class Ind():
       innov    - (np_array) - updated innovation record
 
     """
+    assert innov is not None, 'Innovation record required for addConn mutation'
     if innov is None:
       newConnId = connG[0,-1]+1
     else:
@@ -399,12 +426,25 @@ class Ind():
         connNew[2] = nodeKey[dest[0],0]
         connNew[3] = (np.random.rand()-0.5)*2*p['ann_absWCap']
         connNew[4] = 1 if connNew[3] != 0 else 0 # DEBUG fix zero weight connections
+        # connG = np.c_[connG,connNew]
+        
+        # deduplicate innovations
+        dup = False
+        connInnov = innov[:,(innov[1,:]==connNew[1]) & (innov[2,:]==connNew[2])]
+        if connInnov.shape[1] != 0:
+          assert connInnov.shape[1] == 1, 'Innovation record corrupted'
+          connNew[0] = connInnov[0,0] # connInnov could be smaller than connNew
+          assert connG[:,connG[0,:]==connNew[0]].shape[1] == 0, 'Innovation record corrupted'
+          dup = True
+        
         connG = np.c_[connG,connNew]
-
         # Record innovation
         if innov is not None:
-          newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
-          innov = np.hstack((innov,newInnov[:,None]))
+          # newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
+          # innov = np.hstack((innov,newInnov[:,None]))
+          if not dup:
+            newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
+            innov = np.hstack((innov,newInnov[:,None]))
         break
 
     return connG, innov
@@ -452,9 +492,3 @@ class Ind():
       nodeG[2,mutNode] = int(newActPool[np.random.randint(len(newActPool))])
 
     return nodeG, innov
-
-# -- Utilties ------------------------------------------------------------ -- #
-def listXor(b,c):
-  """Returns elements in lists b and c that they don't share"""
-  A = [a for a in b+c if (a not in b) or (a not in c)]
-  return A

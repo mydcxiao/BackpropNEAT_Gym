@@ -54,7 +54,6 @@ def getNodeOrder(nodeG,connG):
   
   wMat = np.zeros((np.shape(node)[1],np.shape(node)[1]))
   wMat[src,dest] = conn[3,:]
-  # wMat[src,dest] = 1
   connMat = wMat[nIns+nOuts:,nIns+nOuts:]
   connMat[connMat!=0] = 1
   

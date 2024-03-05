@@ -33,7 +33,7 @@ class Neat():
     self.pop     = [] 
     self.species = [] 
     self.innov   = [] 
-    self.gen     = 0  
+    self.gen     = 0  # not used
 
   ''' Subfunctions '''
   from ._variation import evolvePop, recombine
@@ -46,10 +46,11 @@ class Neat():
     if len(self.pop) == 0:
       self.initPop()      # Initialize population
     else:
+      self.gen += 1
       self.probMoo()      # Rank population according to objectivess
       self.speciate()     # Divide population into species
       self.evolvePop()    # Create child population 
-
+    
     return self.pop       # Send child population for evaluation
 
   def tell(self,reward, wVec=None):
@@ -101,10 +102,9 @@ class Neat():
     pop = []
     for i in range(p['popSize']):
         newInd = Ind(conn, node)
-        scale = 2*(np.random.rand(1,nConn)-0.5)
-        newInd.conn[3,:] = np.where(scale != 0, scale, 0.1)*p['ann_absWCap'] # DEBUG fix zero weight bug
-        # newInd.conn[3,:] = 2*(np.random.rand(1,nConn)-0.5)*p['ann_absWCap']
+        newInd.conn[3,:] = 2*(np.random.rand(1,nConn)-0.5)*p['ann_absWCap']
         newInd.conn[4,:] = np.random.rand(1,nConn) < p['prob_initEnable']
+        newInd.conn[4,newInd.conn[3,:]==0] = 0 # DEBUG Disable zero weights
         newInd.express()
         newInd.birth = 0
         pop.append(copy.deepcopy(newInd))  
