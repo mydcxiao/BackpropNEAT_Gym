@@ -62,7 +62,6 @@ class Ind():
     """Converts genes to weight matrix and activation vector
     """
     order, wMat, gradMask = getNodeOrder(self.node, self.conn)
-    # if order is not False:
     assert order is not False, 'Topological sort failed'
     self.wMat = wMat
     self.aVec = self.node[2,order]
@@ -72,13 +71,9 @@ class Ind():
     wVec[np.isnan(wVec)] = 0
     self.wVec  = wVec
     self.nConn = np.sum(wVec!=0)
-    #   return True
-    # else:
-    #   return False
     
   def impress(self, wVec):
     order, _, _ = getNodeOrder(self.node, self.conn)
-    # if order is not False:
     assert order is not False, 'Topological sort failed'
     wMat = wVec.reshape(np.shape(self.wMat))
     node_perm = self.node[0,order]
@@ -90,9 +85,6 @@ class Ind():
       else:
         self.conn[3,i] = value
     self.express()
-    #   return True
-    # else:
-    #   return False
 
   def createChild(self, p, innov, gen=0, mate=None):
     """Create new individual with this individual as a parent
@@ -151,18 +143,69 @@ class Ind():
     parentA = self
     parentB = mate
 
-    # Inherit all nodes and connections from most fit parent
-    child = Ind(parentA.conn, parentA.node)
+    # # Inherit all nodes and connections from most fit parent
+    # child = Ind(parentA.conn, parentA.node)
     
-    # Identify matching connection genes in ParentA and ParentB
-    aConn = np.copy(parentA.conn[0,:])
-    bConn = np.copy(parentB.conn[0,:])
-    matching, IA, IB = np.intersect1d(aConn,bConn,return_indices=True)
+    # # Identify matching connection genes in ParentA and ParentB
+    # aConn = np.copy(parentA.conn[0,:])
+    # bConn = np.copy(parentB.conn[0,:])
+    # matching, IA, IB = np.intersect1d(aConn,bConn,return_indices=True)
     
-    # Replace weights with parentB weights with some probability
-    bProb = 0.5
-    bGenes = np.random.rand(1,len(matching))<bProb
-    child.conn[3,IA[bGenes[0]]] = parentB.conn[3,IB[bGenes[0]]]
+    # # Replace weights with parentB weights with some probability
+    # bProb = 0.5
+    # bGenes = np.random.rand(1,len(matching))<bProb
+    # child.conn[3,IA[bGenes[0]]] = parentB.conn[3,IB[bGenes[0]]]
+    
+    # < ---- True NEAT Crossover ---- >
+    connA, nodeA = np.copy(parentA.conn), np.copy(parentA.node)
+    connB, nodeB = np.copy(parentB.conn), np.copy(parentB.node)
+    
+    connAId, connBId = connA[0,:], connB[0,:]
+    overlapConn = np.intersect1d(connAId,connBId)
+    diffConn = np.setdiff1d(connAId,connBId)
+    allConn = np.sort(np.concatenate((overlapConn,diffConn)))
+    connChild = np.empty((5,0))
+    for id in allConn:
+      aInd = np.where(connAId==id)[0]
+      bInd = np.where(connBId==id)[0]
+      if id in overlapConn:
+        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        if np.random.rand() < 0.5:
+          connChild = np.hstack((connChild,connA[:,aInd]))
+        else:
+          connChild = np.hstack((connChild,connB[:,bInd]))
+        connChild[4,-1] = 0 if (connA[4,aInd] == 0) and (connB[4,bInd] == 0) else 1
+      else:
+        if len(aInd) > 0:
+          assert len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+          connChild = np.hstack((connChild,connA[:,aInd]))
+        else:
+          assert len(aInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+          connChild = np.hstack((connChild,connB[:,bInd]))
+          
+    nodeAId, nodeBId = nodeA[0,:], nodeB[0,:]
+    overlapNode = np.intersect1d(nodeAId,nodeBId)
+    diffNode = np.setdiff1d(nodeAId,nodeBId)
+    allNode = np.sort(np.concatenate((overlapNode,diffNode)))
+    nodeChild = np.empty((3,0))
+    for id in allNode:
+      aInd = np.where(nodeAId==id)[0]
+      bInd = np.where(nodeBId==id)[0]
+      if id in overlapNode:
+        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        if np.random.rand() < 0.5:
+          nodeChild = np.hstack((nodeChild,nodeA[:,aInd]))
+        else:
+          nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
+      else:
+        if len(aInd) > 0:
+          assert len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+          nodeChild = np.hstack((nodeChild,nodeA[:,aInd]))
+        else:
+          assert len(aInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+          nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
+    
+    child = Ind(connChild, nodeChild)
     
     return child
 
@@ -267,12 +310,9 @@ class Ind():
 
     """
     assert innov is not None, 'Innovation record required for addNode mutation'
-    if innov is None:
-      newNodeId = int(max(nodeG[0,:]+1))
-      newConnId = connG[0,-1]+1    
-    else:
-      newNodeId = int(max(innov[2,:])+1) # next node id is a running counter
-      newConnId = innov[0,-1]+1 
+    
+    newNodeId = int(max(innov[2,:])+1) # next node id is a running counter
+    newConnId = innov[0,-1]+1 
        
     # Choose connection to split
     connActive = np.where(connG[4,:] == 1)[0]
@@ -282,28 +322,8 @@ class Ind():
     
     # Create new node
     newActivation = p['ann_actRange'][np.random.randint(len(p['ann_actRange']))]
-    # newNode = np.array([[newNodeId, 3, newActivation]]).T
-    
-    # Deduplicate innovations
-    dup = False
-    innovTo = innov[3, (innov[1,:]==connG[:,connSplit][1]) & (innov[3,:]!=-1)]
-    innovFrom = innov[3, (innov[2,:]==connG[:,connSplit][2]) & (innov[3,:]!=-1)]
-    nodesID = np.intersect1d(innovTo,innovFrom, assume_unique=True) # Note there exists self-duplication and cross-duplication
-    np.random.shuffle(nodesID)
-    for nodeID in nodesID:
-        nodeInnov = innov[:,innov[3,:]==nodeID]
-        assert nodeInnov.shape[1] == 1, 'Innovation record corrupted'
-        if nodeG[:,nodeG[0,:]==nodeID].shape[1] == 0: # check if it's self-duplication
-          newNodeId = nodeID
-          newConnId = nodeInnov[0,0]
-          dup = True
-          break
-        else:
-          if np.random.rand() >= p['prob_enable'] * p['prob_addNode']:
-            return connG, nodeG, innov
-          break
-      
     newNode = np.array([[newNodeId, 3, newActivation]]).T
+    
     # Add connections to and from new node
     # -- Effort is taken to minimize disruption from node addition:
     # The 'weight to' the node is set to 1, the 'weight from' is set to the
@@ -325,16 +345,10 @@ class Ind():
     connG[4,connSplit] = 0
         
     # Record innovations
-    if innov is not None:
-      # newInnov = np.empty((5,2))
-      # newInnov[:,0] = np.hstack((connTo[0:3], newNodeId, gen))   
-      # newInnov[:,1] = np.hstack((connFrom[0:3], -1, gen))
-      # innov = np.hstack((innov,newInnov))
-      if not dup:
-        newInnov = np.empty((5,2))
-        newInnov[:,0] = np.hstack((connTo[0:3], newNodeId, gen))   
-        newInnov[:,1] = np.hstack((connFrom[0:3], -1, gen)) 
-        innov = np.hstack((innov,newInnov))
+    newInnov = np.empty((5,2))
+    newInnov[:,0] = np.hstack((connTo[0:3], newNodeId, gen))   
+    newInnov[:,1] = np.hstack((connFrom[0:3], -1, gen))
+    innov = np.hstack((innov,newInnov))
       
     # Add new structures to genome
     nodeG = np.hstack((nodeG,newNode))
@@ -381,10 +395,8 @@ class Ind():
 
     """
     assert innov is not None, 'Innovation record required for addConn mutation'
-    if innov is None:
-      newConnId = connG[0,-1]+1
-    else:
-      newConnId = innov[0,-1]+1 
+    
+    newConnId = innov[0,-1]+1 
 
     nIns = len(nodeG[0,nodeG[1,:] == 1]) + len(nodeG[0,nodeG[1,:] == 4])
     nOuts = len(nodeG[0,nodeG[1,:] == 2])
@@ -439,12 +451,9 @@ class Ind():
         
         connG = np.c_[connG,connNew]
         # Record innovation
-        if innov is not None:
-          # newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
-          # innov = np.hstack((innov,newInnov[:,None]))
-          if not dup:
-            newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
-            innov = np.hstack((innov,newInnov[:,None]))
+        if not dup:
+          newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
+          innov = np.hstack((innov,newInnov[:,None]))
         break
 
     return connG, innov

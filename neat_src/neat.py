@@ -33,7 +33,7 @@ class Neat():
     self.pop     = [] 
     self.species = [] 
     self.innov   = [] 
-    self.gen     = 0  # not used
+    self.gen     = 0 
 
   ''' Subfunctions '''
   from ._variation import evolvePop, recombine

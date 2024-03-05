@@ -46,7 +46,6 @@ def speciate(self):
       p['spec_thresh'] = p['spec_threshMin']
     
     species, pop = self.assignSpecies  (species, pop, p)
-    # if len(self.species) != 0:
     species      = self.assignOffspring(species, pop, p)
 
   elif p['alg_speciate'] == "none": 
@@ -86,37 +85,7 @@ def assignSpecies(self, species, pop, p):
       # Create new species if none exist
       species = [Species(pop[0])]
       species[0].nOffspring = p['popSize']
-      for ind in pop:
-        ind.species = 0
-      species[0].members = pop
-    # numSpecies = p['spec_target']
-    # numMembers = len(pop) // numSpecies
-    # if numMembers <= 0:
-    #   # Create new species if none exist
-    #   species = [Species(pop[0])]
-    #   species[0].nOffspring = p['popSize']
-    #   iSpec = 0
-    #   return species, pop
-    # inds = np.random.permutation(len(pop))
-    # assert len(inds) == len(pop) == p['popSize'], "ERROR: Population size mismatch"
-    # iSpec = 0
-    # curMembers = 0
-    # for ind in inds:
-    #   if curMembers == 0:
-    #     species.append(Species(pop[ind]))
-    #     species[iSpec].nOffspring = 0
-    #     species[iSpec].members = []
-    #   elif curMembers == numMembers and iSpec < numSpecies - 1:
-    #     species.append(Species(pop[ind]))
-    #     iSpec += 1
-    #     species[iSpec].nOffspring = 0
-    #     species[iSpec].members = []
-    #     curMembers = 0
-    #   pop[ind].species = iSpec
-    #   species[iSpec].members.append(pop[ind])
-    #   species[iSpec].nOffspring += 1
-    #   curMembers += 1
-    # assert len(species) == numSpecies, f"ERROR: Incorrect number of species created {len(species)} {numSpecies}"
+      species[0].members = []
   else:
     # Remove existing members
     # for iSpec in range(len(species)):
@@ -139,37 +108,27 @@ def assignSpecies(self, species, pop, p):
       species[iSpec].members = []
       unspeciated.remove(new_seed_id)
 
-    assert p['spec_thresh'] > 0, "ERROR: Species threshold must be positive"
-    # Assign members of population to first species within compat distance
-    for i in range(len(pop)):
-      # assigned = False
-      candidates = []
-      # for iSpec in range(len(species)):
-      iSpec = 0
-      while iSpec < len(species):
-        ref = np.copy(species[iSpec].seed.conn)
-        ind = np.copy(pop[i].conn)
-        cDist = self.compatDist(ref,ind)
-        if cDist < p['spec_thresh']:
-        #   pop[i].species = iSpec
-        #   species[iSpec].members.append(pop[i])
-        #   assigned = True
-        #   break
-          candidates.append((cDist, iSpec))
-        iSpec += 1
-      # find best species to assign to
-      if len(candidates) > 0:
-        _, best_iSpec = min(candidates, key=lambda x: x[0])
-        pop[i].species = best_iSpec
-        species[best_iSpec].members.append(pop[i])
-        # assigned = True
-      # If no seed is close enough, start your own species
-      # if not assigned:
-      else:
-        # pop[i].species = iSpec+1
-        pop[i].species = iSpec
-        species.append(Species(pop[i]))
-        species[iSpec].nOffspring = 0
+  assert p['spec_thresh'] > 0, "ERROR: Species threshold must be positive"
+  # Assign members of population to first species within compat distance
+  for i in range(len(pop)):
+    candidates = []
+    iSpec = 0
+    while iSpec < len(species):
+      ref = np.copy(species[iSpec].seed.conn)
+      ind = np.copy(pop[i].conn)
+      cDist = self.compatDist(ref,ind)
+      if cDist < p['spec_thresh']:
+        candidates.append((cDist, iSpec))
+      iSpec += 1
+    # find best species to assign to
+    if len(candidates) > 0:
+      _, best_iSpec = min(candidates, key=lambda x: x[0])
+      pop[i].species = best_iSpec
+      species[best_iSpec].members.append(pop[i])
+    # If no seed is close enough, start your own species
+    else:
+      pop[i].species = iSpec
+      species.append(Species(pop[i]))
   
   return species, pop
 
@@ -235,47 +194,12 @@ def assignOffspring(self, species, pop, p):
       print("WARN: Entire population stagnant, continuing without extinction")
       
     offspring = bestIntSplit(speciesFit, p['popSize'])
-    # noOffspring = []
-    # total_offspring = 0
     for iSpec in range(nSpecies):
       species[iSpec].nOffspring = offspring[iSpec]
-    #   ps = species[iSpec].nOffspring
-    #   s = offspring[iSpec]
-    #   if s == 0:
-    #     noOffspring.append(iSpec)
-    #     species[iSpec].nOffspring = 0
-    #   elif np.round(np.abs(s-ps) * 0.5) > 0:
-    #     species[iSpec].nOffspring = ps + np.round(np.abs(s-ps) * 0.5)
-    #   elif (s-ps) * 0.5 > 0:
-    #     species[iSpec].nOffspring = ps + 1
-    #   elif (s-ps) * 0.5 < 0:
-    #     species[iSpec].nOffspring = ps - 1
-    #   else:
-    #     species[iSpec].nOffspring = ps
-    #   total_offspring += species[iSpec].nOffspring
-    
-    # norm = p['popSize'] / total_offspring
-    # total_offspring = 0
-    # for iSpec in range(nSpecies):
-    #   species[iSpec].nOffspring = np.round(species[iSpec].nOffspring * norm)
-    #   total_offspring += species[iSpec].nOffspring
-    
-    # if total_offspring < p['popSize']:
-    #   if len(noOffspring) > 0:
-    #     while total_offspring < p['popSize']:
-    #       iSpec = np.random.choice(noOffspring)
-    #       species[iSpec].nOffspring += 1
-    #       total_offspring += 1
-    #   else:
-    #     iSpec = np.random.choice(nSpecies)
-    #     while total_offspring < p['popSize']:
-    #       species[iSpec].nOffspring += 1
-    #       total_offspring += 1
-    #       iSpec = np.random.choice(nSpecies)
   
   # Extinction    
   species[:] = [s for s in species if s.nOffspring != 0]
-
+  
   return species
 
 def compatDist(self, ref, ind):
