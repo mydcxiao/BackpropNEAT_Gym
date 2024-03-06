@@ -79,11 +79,8 @@ class Ind():
     node_perm = self.node[0,order]
     for i in range(len(self.conn[0])):
       value = wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
-      if self.conn[4,i] == 1 and value == 0:
-        self.conn[4,i] = 0
-        self.conn[3,i] = 1
-      else:
-        self.conn[3,i] = value
+      self.conn[3,i] = value if value != 0 else 1
+      self.conn[4,i] = 1 if value != 0 else 0
     self.express()
 
   def createChild(self, p, innov, gen=0, mate=None):
@@ -165,21 +162,24 @@ class Ind():
     overlapConn = np.intersect1d(connAId,connBId)
     diffConn = np.setxor1d(connAId,connBId) # setdiffid only return different elements in first argument
     allConn = np.concatenate((overlapConn,diffConn)) # no need to sort, np.intersect1d already sorted and nIns and nOuts are always the smallest
+    border = len(overlapConn)
     connChild = np.empty((5,0))
-    for id in allConn:
+    for i in range(len(allConn)):
+      id = allConn[i]
       aInd = np.where(connAId==id)[0]
       bInd = np.where(connBId==id)[0]
-      if id in overlapConn:
+      if i < border:
         assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
         if np.random.rand() < 0.5:
           connChild = np.hstack((connChild,connA[:,aInd]))
         else:
           connChild = np.hstack((connChild,connB[:,bInd]))
         if (connA[4,aInd[0]] == 0) and (connB[4,bInd[0]] == 0):
+          assert connA[3, aInd[0]] != 0 and connB[3, bInd[0]] != 0, f'Innovation record corrupted {connA[3, aInd[0]]} {connB[3, bInd[0]]}'
           connChild[4,-1] = 0
         else:
+          assert connChild[3,-1] != 0, f'Innovation record corrupted {connChild[3,-1]}'
           connChild[4,-1] = 1
-          connChild[3,-1] = connChild[3,-1] if connChild[3,-1] != 0 else 1
       else:
         if len(aInd) > 0:
           assert len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
@@ -192,11 +192,13 @@ class Ind():
     overlapNode = np.intersect1d(nodeAId,nodeBId)
     diffNode = np.setxor1d(nodeAId,nodeBId)
     allNode = np.concatenate((overlapNode,diffNode))
+    border = len(overlapNode)
     nodeChild = np.empty((3,0))
-    for id in allNode:
+    for i in range(len(allNode)):
+      id = allNode[i]
       aInd = np.where(nodeAId==id)[0]
       bInd = np.where(nodeBId==id)[0]
-      if id in overlapNode:
+      if i < border:
         assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
         if np.random.rand() < 0.5:
           nodeChild = np.hstack((nodeChild,nodeA[:,aInd]))

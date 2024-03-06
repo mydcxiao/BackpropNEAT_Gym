@@ -57,8 +57,8 @@ def recombine(self, species, innov, gen):
     pop[-numberToCull:] = []     
 
   # Elitism - keep best individuals unchanged
-  nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
-  # nElites = int(np.ceil(len(pop)*p['select_eliteRatio']))
+  # nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
+  nElites = int(np.ceil(len(pop)*p['select_eliteRatio']))
   for i in range(nElites):
     children.append(pop[i])
     nOffspring -= 1
