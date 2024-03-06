@@ -233,7 +233,8 @@ def compatDist(self, ref, ind):
   longestGenome = max(len(IA),len(IB)) - nInitial
   # weightDiff = np.mean(weightDiff)
   weightDiff = np.mean(weightDiff) / (1 + np.max(weightDiff))
-  geneDiff   = geneDiff   / (1+longestGenome)
+  geneDiff   = geneDiff   / (1+longestGenome) # this can be bigger than 1 but less than 2
+  # geneDiff = geneDiff / (len(IA) + len(IB) - 2*nInitial)
 
   dist = geneDiff   * self.p['spec_geneCoef']      \
        + weightDiff * self.p['spec_weightCoef']  

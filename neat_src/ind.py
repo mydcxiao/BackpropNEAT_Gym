@@ -111,8 +111,9 @@ class Ind():
       child = self.crossover(mate)
     else:
       child = Ind(self.conn, self.node)
-
+    
     child, innov = child.mutate(p,innov,gen)
+    
     return child, innov
 
 # -- Canonical NEAT recombination operators ------------------------------ -- #
@@ -162,8 +163,8 @@ class Ind():
     
     connAId, connBId = connA[0,:], connB[0,:]
     overlapConn = np.intersect1d(connAId,connBId)
-    diffConn = np.setdiff1d(connAId,connBId)
-    allConn = np.sort(np.concatenate((overlapConn,diffConn)))
+    diffConn = np.setxor1d(connAId,connBId) # setdiffid only return different elements in first argument
+    allConn = np.concatenate((overlapConn,diffConn)) # no need to sort, np.intersect1d already sorted and nIns and nOuts are always the smallest
     connChild = np.empty((5,0))
     for id in allConn:
       aInd = np.where(connAId==id)[0]
@@ -174,7 +175,11 @@ class Ind():
           connChild = np.hstack((connChild,connA[:,aInd]))
         else:
           connChild = np.hstack((connChild,connB[:,bInd]))
-        connChild[4,-1] = 0 if (connA[4,aInd] == 0) and (connB[4,bInd] == 0) else 1
+        if (connA[4,aInd[0]] == 0) and (connB[4,bInd[0]] == 0):
+          connChild[4,-1] = 0
+        else:
+          connChild[4,-1] = 1
+          connChild[3,-1] = connChild[3,-1] if connChild[3,-1] != 0 else 1
       else:
         if len(aInd) > 0:
           assert len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
@@ -185,8 +190,8 @@ class Ind():
           
     nodeAId, nodeBId = nodeA[0,:], nodeB[0,:]
     overlapNode = np.intersect1d(nodeAId,nodeBId)
-    diffNode = np.setdiff1d(nodeAId,nodeBId)
-    allNode = np.sort(np.concatenate((overlapNode,diffNode)))
+    diffNode = np.setxor1d(nodeAId,nodeBId)
+    allNode = np.concatenate((overlapNode,diffNode))
     nodeChild = np.empty((3,0))
     for id in allNode:
       aInd = np.where(nodeAId==id)[0]
@@ -206,7 +211,7 @@ class Ind():
           nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
     
     child = Ind(connChild, nodeChild)
-    
+
     return child
 
   def mutate(self,p,innov=None,gen=None):
@@ -437,7 +442,8 @@ class Ind():
         connNew[1] = nodeKey[src,0]
         connNew[2] = nodeKey[dest[0],0]
         connNew[3] = (np.random.rand()-0.5)*2*p['ann_absWCap']
-        connNew[4] = 1 if connNew[3] != 0 else 0 # DEBUG fix zero weight connections
+        connNew[4] = 1 
+        connNew[3] = 1 if connNew[3] == 0 else connNew[3] # DEBUG fix zero weight connections
         # connG = np.c_[connG,connNew]
         
         # deduplicate innovations
