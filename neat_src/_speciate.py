@@ -117,12 +117,13 @@ def assignSpecies(self, species, pop, p):
       ref = np.copy(species[iSpec].seed.conn)
       ind = np.copy(pop[i].conn)
       cDist = self.compatDist(ref,ind)
-      if cDist < p['spec_thresh']:
-        candidates.append((cDist, iSpec))
+      # if cDist < p['spec_thresh']:
+      candidates.append((cDist, iSpec))
       iSpec += 1
     # find best species to assign to
-    if len(candidates) > 0:
-      _, best_iSpec = min(candidates, key=lambda x: x[0])
+    # if len(candidates) > 0:
+    min_cDist, best_iSpec = min(candidates, key=lambda x: x[0])
+    if min_cDist < p['spec_thresh'] or len(species) >= p['spec_target']:
       pop[i].species = best_iSpec
       species[best_iSpec].members.append(pop[i])
     # If no seed is close enough, start your own species
@@ -156,8 +157,10 @@ def assignOffspring(self, species, pop, p):
     # Rank all individuals
     popFit = np.asarray([ind.fitness for ind in pop])
     popRank = tiedRank(popFit)
+    slack = 0.01
     if p['select_rankWeight'] == 'exp':
-      rankScore = 1/popRank
+      # rankScore = 1/popRank
+      rankScore = np.exp(-popRank*slack)
     elif p['select_rankWeight'] == 'lin':
       rankScore = 1+abs(popRank-len(popRank))
     else:
