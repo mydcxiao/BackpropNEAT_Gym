@@ -102,7 +102,7 @@ def assignSpecies(self, species, pop, p):
       _, new_seed_id = min(candidates, key=lambda x: x[0])
       new_seed = pop[new_seed_id]
       species[iSpec].seed = new_seed
-      species[iSpec].bestFit = new_seed.fitness
+      # species[iSpec].bestFit = new_seed.fitness
       species[iSpec].bestInd = new_seed
       # species[iSpec].members = [new_seed]
       species[iSpec].members = []
