@@ -337,7 +337,7 @@ def selectAct(action, actSelect, backprop=False):
     return action
   else:
     if actSelect == 'softmax':
-      action = jax.nn.softmax(action)
+      action = softmax(action, backprop=True)
     elif actSelect == 'prob':
       raise ValueError("Probabilistic action selection is not differentiable")
     elif actSelect == 'sigmoid':
@@ -346,7 +346,7 @@ def selectAct(action, actSelect, backprop=False):
       action = action.flatten()
     return action
 
-def softmax(x):
+def softmax(x, backprop=False):
     """Compute softmax values for each sets of scores in x.
     Assumes: [samples x dims]
 
@@ -358,13 +358,21 @@ def softmax(x):
       softmax - (np_array) - softmax normalized in dim 1
     
     Todo: Untangle all the transposes...    
-    """    
-    if x.ndim == 1:
-      e_x = np.exp(x - np.max(x))
-      return e_x / e_x.sum(axis=0)
+    """ 
+    if not backprop:   
+      if x.ndim == 1:
+        e_x = np.exp(x - np.max(x))
+        return e_x / e_x.sum(axis=0)
+      else:
+        e_x = np.exp(x.T - np.max(x,axis=1))
+        return (e_x / e_x.sum(axis=0)).T
     else:
-      e_x = np.exp(x.T - np.max(x,axis=1))
-      return (e_x / e_x.sum(axis=0)).T
+      if x.ndim == 1:
+        e_x = jnp.exp(x - jnp.max(x))
+        return e_x / jnp.sum(e_x, axis=0)
+      else:
+        e_x = jnp.exp(x.T - jnp.max(x,axis=1))
+        return (e_x / jnp.sum(e_x,axis=0)).T
 
 def weightedRandom(weights):
   """Returns random index, with each choices chance weighted

@@ -150,7 +150,8 @@ class GymTask():
         y = self.env.target
         annOut = act(wVec, aVec, self.nInput, self.nOutput, state)
         action = selectAct(annOut, self.actSelect)
-        pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
+        pred = np.where(action > 0.5, 1, 0)
+        assert pred.shape == y.shape, "Prediction and target shape mismatch"
         error = np.mean(np.abs(pred - y))
         nConn = np.count_nonzero(wVec)
         totalReward = -error * np.sqrt(1+connPenalty * nConn)
@@ -169,7 +170,8 @@ class GymTask():
         def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes, gradMask):
             annOut = act(wVec, aVec, input, output, state, backprop, nNodes, gradMask)
             action = selectAct(annOut, actSelect, backprop)
-            action = action.reshape(-1, 1)
+            action = action
+            assert action.shape == y.shape, "Prediction and target shape mismatch"
             eps = 1e-7 # bigger to avoid NaN
             action_clipped = jnp.clip(action, eps, 1 - eps)
             loss = -jnp.mean(y * jnp.log(action_clipped) + (1 - y) * jnp.log(1 - action_clipped))
@@ -208,7 +210,8 @@ class GymTask():
             nConn = np.count_nonzero(wVec_np)
             annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state)
             action = selectAct(annOut, self.actSelect)
-            pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
+            pred = np.where(action > 0.5, 1, 0)
+            assert pred.shape == y.shape, "Prediction and target shape mismatch"
             error = np.mean(np.abs(pred - y))
             totalReward = -error * np.sqrt(1+connPenalty * nConn)
             break
