@@ -233,7 +233,7 @@ def applyAct(actId, x, backprop=False):
       #value = (np.tanh(50*x/2.0) + 1.0)/2.0
 
     elif actId == 3: # Sin
-      value = np.sin(np.pi*x) 
+      value = np.sin(x) 
 
     elif actId == 4: # Gaussian with mean 0 and sigma 1
       value = np.exp(-np.multiply(x, x) / 2.0)
@@ -248,16 +248,16 @@ def applyAct(actId, x, backprop=False):
       value = -x
 
     elif actId == 8: # Absolute Value
-      value = abs(x)   
+      value = np.abs(x)   
       
     elif actId == 9: # Relu
       value = np.maximum(0, x)   
 
     elif actId == 10: # Cosine
-      value = np.cos(np.pi*x)
+      value = np.cos(x)
 
     elif actId == 11: # Squared
-      value = x**2
+      value = np.square(x)
       
     else:
       value = x
@@ -267,8 +267,8 @@ def applyAct(actId, x, backprop=False):
     if actId == 1:   # Linear
       value = x
 
-    if actId == 2:   # Unsigned Step Function (use clamp for backpropagation)
-      value = jnp.clip(x, 0, 1)
+    if actId == 2:   # Unsigned Step Function
+      raise ValueError("Unsigned Step Function is not differentiable")
 
     elif actId == 3: # Sin
       value = jnp.sin(x) 
@@ -296,9 +296,6 @@ def applyAct(actId, x, backprop=False):
 
     elif actId == 11: # Squared
       value = jnp.square(x)
-    
-    elif actId == 12: # True Inverse
-      value = jnp.where(x != 0, 1/x, x)
       
     else:
       value = x
@@ -341,10 +338,12 @@ def selectAct(action, actSelect, backprop=False):
   else:
     if actSelect == 'softmax':
       action = jax.nn.softmax(action)
+    elif actSelect == 'prob':
+      raise ValueError("Probabilistic action selection is not differentiable")
     elif actSelect == 'sigmoid':
-      action = jax.nn.sigmoid(action)
+      action = (jnp.tanh(action/2.0) + 1.0)/2.0
     else:
-      action = action
+      action = action.flatten()
     return action
 
 def softmax(x):

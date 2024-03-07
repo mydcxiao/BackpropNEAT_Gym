@@ -206,8 +206,8 @@ class GymTask():
             y = self.env.target
             wVec_np = device_get(wVec).copy()
             nConn = np.count_nonzero(wVec_np)
-            annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state, False, nNodes)
-            action = selectAct(annOut, self.actSelect, False)
+            annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state)
+            action = selectAct(annOut, self.actSelect)
             pred = np.where(action > 0.5, 1, 0).reshape(-1, 1)
             error = np.mean(np.abs(pred - y))
             totalReward = -error * np.sqrt(1+connPenalty * nConn)
