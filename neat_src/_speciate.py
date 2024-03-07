@@ -157,7 +157,7 @@ def assignOffspring(self, species, pop, p):
     # Rank all individuals
     popFit = np.asarray([ind.fitness for ind in pop])
     popRank = tiedRank(popFit)
-    slack = 0.01
+    slack = 0.05
     if p['select_rankWeight'] == 'exp':
       # rankScore = 1/popRank
       rankScore = np.exp(-popRank*slack)
