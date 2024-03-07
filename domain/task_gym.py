@@ -152,9 +152,12 @@ class GymTask():
         action = selectAct(annOut, self.actSelect)
         pred = np.where(action > 0.5, 1, 0)
         assert pred.shape == y.shape, "Prediction and target shape mismatch"
-        error = np.mean(np.abs(pred - y))
+        eps = 1e-7
+        action_clipped = np.clip(action, eps, 1 - eps)
+        error = -np.mean(y * np.log(action_clipped) + (1 - y) * np.log(1 - action_clipped))
+        # error = np.mean(np.abs(pred - y))
         nConn = np.count_nonzero(wVec)
-        totalReward = -error * np.sqrt(1+connPenalty * nConn)
+        totalReward = -error * (1+connPenalty * np.sqrt(nConn))
         return totalReward
       
       else:
@@ -212,8 +215,11 @@ class GymTask():
             action = selectAct(annOut, self.actSelect)
             pred = np.where(action > 0.5, 1, 0)
             assert pred.shape == y.shape, "Prediction and target shape mismatch"
-            error = np.mean(np.abs(pred - y))
-            totalReward = -error * np.sqrt(1+connPenalty * nConn)
+            # error = np.mean(np.abs(pred - y))
+            eps = 1e-7
+            action_clipped = np.clip(action, eps, 1 - eps)
+            error = -np.mean(y * np.log(action_clipped) + (1 - y) * np.log(1 - action_clipped))
+            totalReward = -error * (1+connPenalty * np.sqrt(nConn))
             break
         jax.clear_caches()
         return totalReward, wVec_np

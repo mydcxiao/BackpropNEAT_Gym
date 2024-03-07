@@ -27,7 +27,7 @@ class BackpropClassifyEnv(gym.Env):
     self.t = 0          # Current batch number
     self.t_limit = 0    # Number of batches if you need them
     self.batch   = 10 # Number of images per batch
-    self.seed()
+    # self.seed()
     self.viewer = None
 
     self.trainSet = trainSet
@@ -130,8 +130,8 @@ def spiral(num=None, noise=None, seed=None):
     '''
     if seed: np.random.seed(seed)
     if num == None: num = 200
-    if noise == None: noise = 0.3
-    r = np.linspace(0,1,num//2, endpoint=False) * 5.0
+    if noise == None: noise = 0.5
+    r = np.linspace(0,1,num//2, endpoint=False) * 6.0
     # r = np.linspace(1,np.e,num//2, endpoint=False)
     # r = np.log(r) * 6.0
     tp = np.linspace(0,1,num//2, endpoint=False) * -1.75 * 2 * np.pi
