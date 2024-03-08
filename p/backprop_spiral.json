@@ -1,7 +1,7 @@
 {
     "task":"backprop_spiral",
     "maxGen": 100,
-    "popSize": 500,
+    "popSize": 100,
     "alg_nReps": 30,
     "alg_speciate": "neat",
     "alg_probMoo": 0.0,
@@ -18,8 +18,8 @@
     "select_rankWeight": "exp",
     "select_tournSize": 4,
     "spec_compatMod": 0.25,
-    "spec_dropOffAge": 20,
-    "spec_target": 10,
+    "spec_dropOffAge": 5,
+    "spec_target": 5,
     "spec_thresh": 1.0,
     "spec_threshMin": 0.2,
     "spec_geneCoef": 1,
@@ -27,5 +27,8 @@
     "save_mod": 1,
     "bestReps": 1,
     "backprop": true,
-    "step_size": 0.01
+    "step_size": 0.01,
+    "connPenalty": 0.03,
+    "batch_size": 10,
+    "weight_decay": 0.001
 }

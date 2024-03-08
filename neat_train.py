@@ -38,7 +38,7 @@ def master():
       reward = batchMpiEval(pop)
       neat.tell(reward)           # Send fitness to NEAT    
     else:                       
-      reward, wVec = batchMpiEval(pop, backprop=True)  # Send pop to be evaluated by workers
+      reward, wVec = batchMpiEval(pop)  # Send pop to be evaluated by workers
       neat.tell(reward, wVec)           # Send fitness to NEAT    
 
     data = gatherData(data,neat,gen,hyp)
@@ -97,7 +97,7 @@ def checkBest(data):
   if data.newBest is True:
     bestReps = max(hyp['bestReps'], (nWorker-1))
     rep = np.tile(data.best[-1], bestReps)
-    fitVector = batchMpiEval(rep, sameSeedForEachIndividual=False, backprop='backprop' in hyp and hyp['backprop'], backprop_eval=True)
+    fitVector = batchMpiEval(rep, sameSeedForEachIndividual=False, backprop_eval=True)
     trueFit = np.mean(fitVector)
     if trueFit > data.best[-2].fitness:  # Actually better!      
       data.best[-1].fitness = trueFit
@@ -112,7 +112,7 @@ def checkBest(data):
 
 
 # -- Parallelization ----------------------------------------------------- -- #
-def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False, backprop_eval=False):
+def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop_eval=False):
   """Sends population to workers for evaluation one batch at a time.
 
   Args:
@@ -141,6 +141,7 @@ def batchMpiEval(pop, sameSeedForEachIndividual=True, backprop=False, backprop_e
     seed = np.random.randint(1000)
 
   reward = np.empty(nJobs, dtype=np.float64)
+  backprop = 'backprop' in hyp and hyp['backprop']
   if backprop:
     if backprop_eval:
       flag = True
@@ -237,11 +238,11 @@ def slave():
           comm.Recv(gradMask, source=0, tag=7)
           # gradMask = comm.recv(source=0, tag=7)
           # print('gradMask in comm:', gradMask) # DEBUG
-          result, wVec = task.getFitness(wVec, aVec, backprop=True, gradMask=gradMask, step_size=hyp['step_size'] if 'step_size' in hyp else 0.01)
+          result, wVec = task.getFitness(wVec, aVec, hyp=hyp, gradMask=gradMask)
           comm.Send(result, dest=0, tag=1)      # send fitness back
           comm.Send(wVec, dest=0, tag=2)        # send weight vector back
         else:
-          result = task.getFitness(wVec, aVec, backprop=True, backprop_eval=True)
+          result = task.getFitness(wVec, aVec, hyp=hyp, backprop_eval=True)
           comm.Send(result, dest=0)      # send fitness back
 
     if n_wVec < 0: # End signal recieved

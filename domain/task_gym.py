@@ -42,7 +42,7 @@ class GymTask():
     # Special needs...
     self.needsClosed = (game.env_name.startswith("CartPoleSwingUp"))    
   
-  def getFitness(self, wVec, aVec, hyp=None, view=False, nRep=False, seed=-1, backprop=False, step_size=0.01, backprop_eval=False, gradMask=None):
+  def getFitness(self, wVec, aVec, hyp=None, view=False, nRep=False, seed=-1, backprop_eval=False, gradMask=None):
     """Get fitness of a single individual.
   
     Args:
@@ -61,6 +61,7 @@ class GymTask():
     """
     if nRep is False:
       nRep = self.nReps
+    backprop = hyp['backprop'] if hyp and 'backprop' in hyp else False
     if not backprop:
       wVec[np.isnan(wVec)] = 0
       reward = np.empty(nRep)
@@ -73,7 +74,7 @@ class GymTask():
       if not backprop_eval:
         pre_reward = 0
         for iRep in range(nRep):
-          reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size, backprop_eval=backprop_eval, gradMask=gradMask)
+          reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, hyp=hyp, backprop_eval=backprop_eval, gradMask=gradMask)
           if np.abs(reward - pre_reward) < 1e-3:
             break
           pre_reward = reward
@@ -81,11 +82,11 @@ class GymTask():
       else:
         reward = np.empty(nRep)
         for iRep in range(nRep):
-          reward[iRep] = self.testInd(wVec, aVec, view=view, seed=seed+iRep, backprop=backprop, step_size=step_size, backprop_eval=backprop_eval)
+          reward[iRep] = self.testInd(wVec, aVec, view=view, seed=seed+iRep, hyp=hyp, backprop_eval=backprop_eval)
         return np.mean(reward)
         
 
-  def testInd(self, wVec, aVec, view=False,seed=-1, backprop=False, step_size=0.01, backprop_eval=False, gradMask=None):
+  def testInd(self, wVec, aVec, view=False, seed=-1, hyp=None, backprop_eval=False, gradMask=None):
     """Evaluate individual on task
     Args:
       wVec    - (np_array) - weight matrix as a flattened vector
@@ -100,6 +101,7 @@ class GymTask():
     Returns:
       fitness - (float)    - reward earned in trial
     """
+    backprop = hyp['backprop'] if hyp and 'backprop' in hyp else False
     if not backprop:
       if seed >= 0:
         random.seed(seed)
@@ -143,7 +145,7 @@ class GymTask():
         np.random.seed(seed)
         self.env.seed(seed)
       
-      connPenalty = 0.03
+      connPenalty = hyp['connPenalty'] if 'connPenalty' in hyp else 0.03
       
       if backprop_eval:
         state = self.env.trainSet
@@ -161,7 +163,7 @@ class GymTask():
         return totalReward
       
       else:
-        self.env.batch = 10
+        self.env.batch = hyp['batch_size'] if 'batch_size' in hyp else 10
         state = self.env.reset()
         self.env.t = 0
         
@@ -185,22 +187,21 @@ class GymTask():
         
         totalReward = 0
         done = False
+        step_size = hyp['step_size'] if 'step_size' in hyp else 0.01
+        grad_clip = hyp['ann_absWCap'] / 10.0
+        weight_decay = hyp['weight_decay'] if 'weight_decay' in hyp else 0.001
         avg_vel = 0
         alpha = 0.99
         eps = 1e-8
-        # pre_loss = 0
         while not done:
           y = self.env.get_labels()
-          # wVec, state, y = device_put(wVec), device_put(state), device_put(y)
-          # cur_loss, grads = value_and_grad(loss)(wVec, state=state, y=y)
           grads = grad(loss)(wVec, state=state, y=y)
+          # grads = jnp.where(jnp.isnan(grads), 0, grads)
+          grads = jnp.clip(grads, -grad_clip, grad_clip)
           avg_vel = alpha * avg_vel + (1 - alpha) * jnp.square(grads)
-          wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.square(avg_vel)) + eps))
+          wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.square(avg_vel)) + eps)) - weight_decay * wVec
+          wVec = jnp.clip(wVec, -hyp['ann_absWCap'], hyp['ann_absWCap'])
           state, _, done, _ = self.env.step(None)
-          # early stopping
-          # if jnp.abs(pre_loss - cur_loss) < 1e-6:
-          #   done = True
-          # pre_loss = cur_loss
           # if view:
           #   if self.needsClosed:
           #     self.env.render(close=done)  
