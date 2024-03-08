@@ -72,12 +72,27 @@ class GymTask():
     else:
       wVec = np.where(np.isnan(wVec), 0, wVec)
       if not backprop_eval:
-        pre_reward = 0
+        init_error = self.get_error(wVec, aVec)
+        very_init_error = init_error
+        wVec_ori = wVec.copy()
+        wVec_prev = wVec.copy()
         for iRep in range(nRep):
-          reward, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, hyp=hyp, backprop_eval=backprop_eval, gradMask=gradMask)
-          if np.abs(reward - pre_reward) < 1e-3:
+          final_error, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, hyp=hyp, backprop_eval=backprop_eval, gradMask=gradMask)
+          if final_error > init_error:
+            wVec = wVec_prev
             break
-          pre_reward = reward
+          else:
+            init_error = final_error
+            wVec_prev = wVec.copy()
+        error = self.get_error(wVec, aVec)
+        if error > init_error:
+          error = init_error
+          wVec = wVec_prev
+        if error > very_init_error:
+          error = very_init_error
+          wVec = wVec_ori
+        connPenalty = hyp['connPenalty'] if 'connPenalty' in hyp else 0.03
+        reward = -error * (1+connPenalty * np.sqrt(np.count_nonzero(wVec)))
         return reward, wVec
       else:
         reward = np.empty(nRep)
@@ -144,20 +159,10 @@ class GymTask():
         random.seed(seed)
         np.random.seed(seed)
         self.env.seed(seed)
-      
-      connPenalty = hyp['connPenalty'] if 'connPenalty' in hyp else 0.03
-      
+           
       if backprop_eval:
-        state = self.env.trainSet
-        y = self.env.target
-        annOut = act(wVec, aVec, self.nInput, self.nOutput, state)
-        action = selectAct(annOut, self.actSelect)
-        pred = np.where(action > 0.5, 1, 0)
-        assert pred.shape == y.shape, "Prediction and target shape mismatch"
-        eps = 1e-7
-        action_clipped = np.clip(action, eps, 1 - eps)
-        error = -np.mean(y * np.log(action_clipped) + (1 - y) * np.log(1 - action_clipped))
-        # error = np.mean(np.abs(pred - y))
+        connPenalty = hyp['connPenalty'] if 'connPenalty' in hyp else 0.03
+        error = self.get_error(wVec, aVec)
         nConn = np.count_nonzero(wVec)
         totalReward = -error * (1+connPenalty * np.sqrt(nConn))
         return totalReward
@@ -175,31 +180,27 @@ class GymTask():
         def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes, gradMask):
             annOut = act(wVec, aVec, input, output, state, backprop, nNodes, gradMask)
             action = selectAct(annOut, actSelect, backprop)
-            action = action
-            assert action.shape == y.shape, "Prediction and target shape mismatch"
-            eps = 1e-7 # bigger to avoid NaN
-            action_clipped = jnp.clip(action, eps, 1 - eps)
-            loss = -jnp.mean(y * jnp.log(action_clipped) + (1 - y) * jnp.log(1 - action_clipped))
+            action = jnp.clip(action, 1e-7, 1 - 1e-7)
+            loss = -jnp.mean(y * jnp.log(action) + (1 - y) * jnp.log(1 - action))
             return loss
             
         loss = partial(forward, aVec=aVec, input=self.nInput, output=self.nOutput, actSelect=self.actSelect, backprop=backprop, nNodes=nNodes, gradMask=gradMask)
         loss = jit(loss)
         
-        totalReward = 0
         done = False
         step_size = hyp['step_size'] if 'step_size' in hyp else 0.01
         grad_clip = hyp['ann_absWCap'] / 10.0
         weight_decay = hyp['weight_decay'] if 'weight_decay' in hyp else 0.001
         avg_vel = 0
-        alpha = 0.99
+        alpha = 0.999
         eps = 1e-8
         while not done:
           y = self.env.get_labels()
           grads = grad(loss)(wVec, state=state, y=y)
-          # grads = jnp.where(jnp.isnan(grads), 0, grads)
-          grads = jnp.clip(grads, -grad_clip, grad_clip)
+          grads = jnp.where(jnp.isnan(grads), 0, grads)
           avg_vel = alpha * avg_vel + (1 - alpha) * jnp.square(grads)
-          wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.square(avg_vel)) + eps)) - weight_decay * wVec
+          grads = jnp.clip(grads, -grad_clip, grad_clip)
+          wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.maximum(jnp.square(avg_vel), eps)))) - weight_decay * wVec
           wVec = jnp.clip(wVec, -hyp['ann_absWCap'], hyp['ann_absWCap'])
           state, _, done, _ = self.env.step(None)
           # if view:
@@ -212,15 +213,29 @@ class GymTask():
             y = self.env.target
             wVec_np = device_get(wVec).copy()
             nConn = np.count_nonzero(wVec_np)
-            annOut = act(wVec_np, aVec, self.nInput, self.nOutput, state)
-            action = selectAct(annOut, self.actSelect)
-            pred = np.where(action > 0.5, 1, 0)
-            assert pred.shape == y.shape, "Prediction and target shape mismatch"
-            # error = np.mean(np.abs(pred - y))
-            eps = 1e-7
-            action_clipped = np.clip(action, eps, 1 - eps)
-            error = -np.mean(y * np.log(action_clipped) + (1 - y) * np.log(1 - action_clipped))
-            totalReward = -error * (1+connPenalty * np.sqrt(nConn))
+            error = self.get_error(wVec_np, aVec)
             break
         jax.clear_caches()
-        return totalReward, wVec_np
+        return error, wVec_np
+
+
+  def get_error(self, wVec, aVec):
+    '''Compute cross entropy error of the network
+    Args:
+      wVec    - (np_array) - weight matrix as a flattened vector
+                [N**2 X 1]
+      aVec    - (np_array) - activation function of each node 
+                [N X 1]    - stored as ints (see applyAct in ann.py)
+    Returns:
+      error - (float)    - error got in trial
+    '''
+    state = self.env.trainSet
+    y = self.env.target
+    annOut = act(wVec, aVec, self.nInput, self.nOutput, state)
+    action = selectAct(annOut, self.actSelect)
+    pred = np.where(action > 0.5, 1, 0)
+    assert pred.shape == y.shape, "Prediction and target shape mismatch"
+    # error = np.mean(np.abs(pred - y))
+    action = np.clip(action, 1e-7, 1 - 1e-7)
+    error = -np.mean(y * np.log(action) + (1 - y) * np.log(1 - action))
+    return error
