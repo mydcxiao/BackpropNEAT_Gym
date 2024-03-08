@@ -142,83 +142,18 @@ class Ind():
     parentA = self
     parentB = mate
 
-    # # Inherit all nodes and connections from most fit parent
-    # child = Ind(parentA.conn, parentA.node)
+    # Inherit all nodes and connections from most fit parent
+    child = Ind(parentA.conn, parentA.node)
     
-    # # Identify matching connection genes in ParentA and ParentB
-    # aConn = np.copy(parentA.conn[0,:])
-    # bConn = np.copy(parentB.conn[0,:])
-    # matching, IA, IB = np.intersect1d(aConn,bConn,return_indices=True)
+    # Identify matching connection genes in ParentA and ParentB
+    aConn = np.copy(parentA.conn[0,:])
+    bConn = np.copy(parentB.conn[0,:])
+    matching, IA, IB = np.intersect1d(aConn,bConn,return_indices=True)
     
-    # # Replace weights with parentB weights with some probability
-    # bProb = 0.5
-    # bGenes = np.random.rand(1,len(matching))<bProb
-    # child.conn[3,IA[bGenes[0]]] = parentB.conn[3,IB[bGenes[0]]]
-    
-    # < ---- True NEAT Crossover ---- >
-    connA, nodeA = np.copy(parentA.conn), np.copy(parentA.node)
-    connB, nodeB = np.copy(parentB.conn), np.copy(parentB.node)
-    
-    nodeAId, nodeBId = nodeA[0,:], nodeB[0,:]
-    overlapNode = np.intersect1d(nodeAId,nodeBId)
-    diffNode = np.setxor1d(nodeAId,nodeBId)
-    allNode = np.concatenate((overlapNode,diffNode))
-    overlapNode = set(overlapNode)
-    nodeChild = np.empty((3,0))
-    for i in range(len(allNode)):
-      id = allNode[i]
-      aInd = np.where(nodeAId==id)[0]
-      bInd = np.where(nodeBId==id)[0]
-      if id in overlapNode:
-        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
-        if np.random.rand() < 0.5:
-          nodeChild = np.hstack((nodeChild,nodeA[:,aInd]))
-        else:
-          nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
-      else:
-        if len(aInd) > 0:
-          assert len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
-          nodeChild = np.hstack((nodeChild,nodeA[:,aInd]))
-        else:
-          assert len(aInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
-          nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
-    
-    connAId, connBId = connA[0,:], connB[0,:]
-    overlapConn = np.intersect1d(connAId,connBId)
-    diffConn = np.setxor1d(connAId,connBId) # setdiffid only return different elements in first argument
-    allConn = np.concatenate((overlapConn,diffConn)) # no need to sort, np.intersect1d already sorted and nIns and nOuts are always the smallest
-    overlapConn = set(overlapConn)
-    connChild = np.empty((5,0))
-    for i in range(len(allConn)):
-      id = allConn[i]
-      aInd = np.where(connAId==id)[0]
-      bInd = np.where(connBId==id)[0]
-      if id in overlapConn:
-        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
-        if np.random.rand() < 0.5:
-          connChild = np.hstack((connChild,connA[:,aInd]))
-        else:
-          connChild = np.hstack((connChild,connB[:,bInd]))
-        if (connA[4,aInd[0]] == 0) and (connB[4,bInd[0]] == 0):
-          connChild[4,-1] = 0
-        else:
-          connChild[4,-1] = 1
-          connChild[3,-1] = connChild[3,-1] if connChild[3,-1] != 0 else 1 # avoid zero weight connections
-      else:
-        if len(aInd) > 0:
-          assert len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
-          if connA[1,aInd[0]] not in overlapNode or connA[2,aInd[0]] not in overlapNode: # avoid recurrent connections
-            connChild = np.hstack((connChild,connA[:,aInd]))
-        else:
-          assert len(aInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
-          if connB[1,bInd[0]] not in overlapNode or connB[2,bInd[0]] not in overlapNode: # avoid recurrent connections
-            connChild = np.hstack((connChild,connB[:,bInd]))
-          
-    # DEBUG: Check if the child is valid
-    # order, _, _ = getNodeOrder(nodeChild, connChild)
-    # assert order is not False, 'Topological sort failed'
-
-    child = Ind(connChild, nodeChild)
+    # Replace weights with parentB weights with some probability
+    bProb = 0.5
+    bGenes = np.random.rand(1,len(matching))<bProb
+    child.conn[3,IA[bGenes[0]]] = parentB.conn[3,IB[bGenes[0]]]
 
     return child
 

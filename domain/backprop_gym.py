@@ -15,7 +15,7 @@ class BackpropClassifyEnv(gym.Env):
   """Classification as an unsupervised OpenAI Gym RL problem.
   """
 
-  def __init__(self, trainSet=None, target=None, type=None, seed=None):
+  def __init__(self, trainSet=None, target=None, type=None, seed=None, num=200, noise=0.5):
     """
     Data set is a tuple of 
     [0] input data: [nSamples x nInputs]
@@ -34,7 +34,7 @@ class BackpropClassifyEnv(gym.Env):
     self.target   = target
     self.type = type
     if type:
-      self._generate_data(type=type, seed=seed)
+      self._generate_data(type=type, seed=seed, noise=noise, num=num)
     
     nInputs = np.shape(self.trainSet)[1]
     high = np.array([1.0]*nInputs)
