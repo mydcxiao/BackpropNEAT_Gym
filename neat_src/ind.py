@@ -142,19 +142,84 @@ class Ind():
     parentA = self
     parentB = mate
 
-    # Inherit all nodes and connections from most fit parent
-    child = Ind(parentA.conn, parentA.node)
+    # # Inherit all nodes and connections from most fit parent
+    # child = Ind(parentA.conn, parentA.node)
     
-    # Identify matching connection genes in ParentA and ParentB
-    aConn = np.copy(parentA.conn[0,:])
-    bConn = np.copy(parentB.conn[0,:])
-    matching, IA, IB = np.intersect1d(aConn,bConn,return_indices=True)
+    # # Identify matching connection genes in ParentA and ParentB
+    # aConn = np.copy(parentA.conn[0,:])
+    # bConn = np.copy(parentB.conn[0,:])
+    # matching, IA, IB = np.intersect1d(aConn,bConn,return_indices=True)
     
-    # Replace weights with parentB weights with some probability
-    bProb = 0.5
-    bGenes = np.random.rand(1,len(matching))<bProb
-    child.conn[3,IA[bGenes[0]]] = parentB.conn[3,IB[bGenes[0]]]
+    # # Replace weights with parentB weights with some probability
+    # bProb = 0.5
+    # bGenes = np.random.rand(1,len(matching))<bProb
+    # child.conn[3,IA[bGenes[0]]] = parentB.conn[3,IB[bGenes[0]]]
 
+    # < ---- True NEAT Crossover ---- >
+    connA, nodeA = np.copy(parentA.conn), np.copy(parentA.node)
+    connB, nodeB = np.copy(parentB.conn), np.copy(parentB.node)
+
+    nodeAId, nodeBId = nodeA[0,:], nodeB[0,:]
+    overlapNode = np.intersect1d(nodeAId,nodeBId)
+    diffNode = np.setxor1d(nodeAId,nodeBId)
+    allNode = np.concatenate((overlapNode,diffNode)) # no need to sort, np.intersect1d already sorted and nIns and nOuts are always the smallest
+    overlapNode = set(overlapNode)
+    nodeChild = np.empty((3,0))
+    for i in range(len(allNode)):
+      id = allNode[i]
+      aInd = np.where(nodeAId==id)[0]
+      bInd = np.where(nodeBId==id)[0]
+      if id in overlapNode:
+        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        if np.random.rand() < 0.5:
+          nodeChild = np.hstack((nodeChild,nodeA[:,aInd]))
+        else:
+          nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
+      else:
+        if len(aInd) > 0:
+          assert len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+          nodeChild = np.hstack((nodeChild,nodeA[:,aInd]))
+        else:
+          assert len(aInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+          nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
+
+    connAId, connBId = connA[0,:], connB[0,:]
+    overlapConn = np.intersect1d(connAId,connBId)
+    diffConnA = np.setdiff1d(connAId,connBId) # setdiffid only return different elements in first argument
+    diffConnB = np.setdiff1d(connBId,connAId) # setdiffid only return different elements in first argument
+    allConn = np.concatenate((overlapConn,diffConnA,diffConnB))
+    overlapConn, diffConnA, diffConnB = set(overlapConn), set(diffConnA), set(diffConnB)
+    connChild = np.empty((5,0))
+    detect_cycle = False
+    for i in range(len(allConn)):
+      id = allConn[i]
+      aInd = np.where(connAId==id)[0]
+      bInd = np.where(connBId==id)[0]
+      if id in overlapConn:
+        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        if np.random.rand() < 0.5:
+          connChild = np.hstack((connChild,connA[:,aInd]))
+        else:
+          connChild = np.hstack((connChild,connB[:,bInd]))
+        if (connA[4,aInd[0]] == 0) and (connB[4,bInd[0]] == 0):
+          connChild[4,-1] = 0
+        else:
+          connChild[4,-1] = 1
+          connChild[3,-1] = connChild[3,-1] if connChild[3,-1] != 0 else 1 # avoid zero weight connections
+      elif id in diffConnA:
+        assert len(aInd) == 1 and len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+        connChild = np.hstack((connChild,connA[:,aInd]))
+      else:
+        assert len(aInd) == 0 and len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        if not self.create_cycle(connChild, connB[:,bInd]): # avoid recurrent connections
+          connChild = np.hstack((connChild,connB[:,bInd]))
+        else:
+          detect_cycle = True
+    
+    if detect_cycle:
+      conn, node = self.create_feed_forward(connChild, nodeChild)
+    child = Ind(conn, node)
+    
     return child
 
   def mutate(self,p,innov=None,gen=None):
@@ -450,3 +515,48 @@ class Ind():
       nodeG[2,mutNode] = int(newActPool[np.random.randint(len(newActPool))])
 
     return nodeG, innov
+  
+  
+  def create_cycle(self, conn1, conn2):
+    assert len(conn2.shape) == 2 and conn2.shape[1] == 1, f'conn2 must be a 2D array {conn2.shape}'
+    src, des = conn2[1,0], conn2[2,0]
+    
+    if src == des:
+      return True
+
+    visited = {des}
+    q = np.array([des])
+    while len(q):
+        l = len(q)
+        for dest in conn1[2,np.isin(conn1[1,:], q)]:
+            if dest not in visited:
+                if dest == src:
+                    return True
+                visited.add(dest)
+                q = np.append(q, dest)
+        q = q[l:]
+
+    return False
+          
+  def required_for_output(self, nIns, nOuts, conn):
+    required = np.arange(nIns, nIns+nOuts)
+    visited = set(required)
+    s = required
+    while len(s):
+      l = len(s)
+      # Find nodes not in s whose output is consumed by a node in s.
+      for src in conn[1,np.isin(conn[2,:],s)]:
+        if src not in visited:
+          visited.add(src)
+          required = np.append(required, src)
+      s = required[l:]
+    
+    return required
+  
+  def create_feed_forward(self, conn, node):
+    nIns = len(node[0,node[1,:] == 1]) + len(node[0,node[1,:] == 4])
+    nOuts = len(node[0,node[1,:] == 2])
+    required = self.required_for_output(nIns, nOuts, conn)
+    node = node[:,np.isin(node[0,:], required)]
+    conn = conn[:,np.isin(conn[1,:], required) & np.isin(conn[2,:], required)]
+    return conn, node
