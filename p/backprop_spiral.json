@@ -30,5 +30,6 @@
     "step_size": 0.01,
     "connPenalty": 0.03,
     "batch_size": 10,
-    "weight_decay": 0.001
+    "weight_decay": 0.001,
+    "spec_smooth": 0.05
 }

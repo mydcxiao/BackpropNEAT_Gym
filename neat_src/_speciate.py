@@ -157,15 +157,15 @@ def assignOffspring(self, species, pop, p):
     # Rank all individuals
     popFit = np.asarray([ind.fitness for ind in pop])
     popRank = tiedRank(popFit)
-    slack = 0.05
+    smoothing = p['spec_smooth'] if 'spec_smooth' in p and p['spec_smooth'] >= 0 else 1
     if p['select_rankWeight'] == 'exp':
       # rankScore = 1/popRank
-      rankScore = np.exp(-popRank*slack)
+      rankScore = np.exp(-popRank*smoothing)
     elif p['select_rankWeight'] == 'lin':
-      rankScore = 1+abs(popRank-len(popRank))
+      rankScore = 1+abs(popRank-len(popRank))*smoothing
     else:
       print("Invalid rank weighting (using linear)")
-      rankScore = 1+abs(popRank-len(popRank))
+      rankScore = 1+abs(popRank-len(popRank))*smoothing
     specId = np.asarray([ind.species for ind in pop])
 
     # Best and Average Fitness of Each Species
