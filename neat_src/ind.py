@@ -529,34 +529,49 @@ class Ind():
     while len(q):
         l = len(q)
         for dest in conn1[2,np.isin(conn1[1,:], q)]:
-            if dest not in visited:
-                if dest == src:
-                    return True
-                visited.add(dest)
-                q = np.append(q, dest)
+          if dest not in visited:
+              if dest == src:
+                  return True
+              visited.add(dest)
+              q = np.append(q, dest)
         q = q[l:]
 
     return False
           
-  def required_for_output(self, nIns, nOuts, conn):
-    required = np.arange(nIns, nIns+nOuts)
-    visited = set(required)
-    s = required
-    while len(s):
-      l = len(s)
-      # Find nodes not in s whose output is consumed by a node in s.
-      for src in conn[1,np.isin(conn[2,:],s)]:
-        if src not in visited:
-          visited.add(src)
-          required = np.append(required, src)
-      s = required[l:]
+  def required_for_output(self, nIns, nOuts, conn, node):
+    required = np.arange(nIns+nOuts)
+    hidden = node[0, nIns+nOuts:]
+    indeg = np.zeros(len(hidden))
+    outdeg = np.zeros(len(hidden))
+    for i in range(len(conn[0])):
+      indeg[np.isin(hidden, conn[2,i])] += 1
+      outdeg[np.isin(hidden, conn[1,i])] += 1
+    zeros = np.zeros(len(hidden))
+    changed = True
+    while changed:
+      before = np.count_nonzero(zeros)
+      zero_indeg = hidden[(indeg == 0) & (zeros == 0)]
+      zero_outdeg = hidden[(outdeg == 0) & (zeros == 0)]
+      zeros[np.isin(hidden, zero_indeg)] = 1
+      zeros[np.isin(hidden, zero_outdeg)] = 1
+      after = np.count_nonzero(zeros)
+      changed = before != after
+      if not changed:
+        break
+      for i in range(len(conn[0])):
+        if zeros[np.isin(hidden, conn[1,i])] == 1:
+          indeg[np.isin(hidden, conn[2,i])] -= 1
+        if zeros[np.isin(hidden, conn[2,i])] == 1:
+          outdeg[np.isin(hidden, conn[1,i])] -= 1
+    
+    required = np.append(required, hidden[zeros == 0])
     
     return required
   
   def create_feed_forward(self, conn, node):
     nIns = len(node[0,node[1,:] == 1]) + len(node[0,node[1,:] == 4])
     nOuts = len(node[0,node[1,:] == 2])
-    required = self.required_for_output(nIns, nOuts, conn)
+    required = self.required_for_output(nIns, nOuts, conn, node)
     node = node[:,np.isin(node[0,:], required)]
     conn = conn[:,np.isin(conn[1,:], required) & np.isin(conn[2,:], required)]
     return conn, node
