@@ -217,8 +217,8 @@ class Ind():
           detect_cycle = True
     
     if detect_cycle:
-      conn, node = self.create_feed_forward(connChild, nodeChild)
-    child = Ind(conn, node)
+      connChild, nodeChild = self.create_feed_forward(connChild, nodeChild)
+    child = Ind(connChild, nodeChild)
     
     return child
 
