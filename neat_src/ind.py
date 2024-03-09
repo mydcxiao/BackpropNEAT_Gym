@@ -549,19 +549,21 @@ class Ind():
     zeros = np.zeros(len(hidden))
     changed = True
     while changed:
-      before = np.count_nonzero(zeros)
+      before = 0
+      new_zeros = np.zeros(len(hidden))
       zero_indeg = hidden[(indeg == 0) & (zeros == 0)]
       zero_outdeg = hidden[(outdeg == 0) & (zeros == 0)]
-      zeros[np.isin(hidden, zero_indeg)] = 1
-      zeros[np.isin(hidden, zero_outdeg)] = 1
-      after = np.count_nonzero(zeros)
+      new_zeros[np.isin(hidden, zero_indeg)] = 1
+      new_zeros[np.isin(hidden, zero_outdeg)] = 1
+      after = np.count_nonzero(new_zeros)
       changed = before != after
       if not changed:
         break
+      zeros[new_zeros == 1] = 1
       for i in range(len(conn[0])):
-        if zeros[np.isin(hidden, conn[1,i])] == 1:
+        if new_zeros[np.isin(hidden, conn[1,i])] == 1:
           indeg[np.isin(hidden, conn[2,i])] -= 1
-        if zeros[np.isin(hidden, conn[2,i])] == 1:
+        if new_zeros[np.isin(hidden, conn[2,i])] == 1:
           outdeg[np.isin(hidden, conn[1,i])] -= 1
     
     required = np.append(required, hidden[zeros == 0])

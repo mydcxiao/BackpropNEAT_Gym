@@ -18,7 +18,7 @@
     "select_rankWeight": "exp",
     "select_tournSize": 4,
     "spec_compatMod": 0.25,
-    "spec_dropOffAge": 10,
+    "spec_dropOffAge": 20,
     "spec_target": 10,
     "spec_thresh": 1.0,
     "spec_threshMin": 0.1,
