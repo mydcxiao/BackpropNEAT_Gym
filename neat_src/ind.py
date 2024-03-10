@@ -541,30 +541,38 @@ class Ind():
   def required_for_output(self, nIns, nOuts, conn, node):
     required = np.arange(nIns+nOuts)
     hidden = node[0, nIns+nOuts:]
+    hidden_conn = conn[:,nIns*nOuts:]
+    
+    if len(hidden) == 0:
+      return required
+    
+    lookup = {hidden[i]: i for i in range(len(hidden))}
+    
     indeg = np.zeros(len(hidden))
     outdeg = np.zeros(len(hidden))
-    for i in range(len(conn[0])):
-      indeg[np.isin(hidden, conn[2,i])] += 1
-      outdeg[np.isin(hidden, conn[1,i])] += 1
+    for i in range(len(hidden_conn[0])):
+      if hidden_conn[1,i] in lookup:
+        outdeg[lookup[hidden_conn[1,i]]] += 1
+      if hidden_conn[2,i] in lookup:
+        indeg[lookup[hidden_conn[2,i]]] += 1
+    
     zeros = np.zeros(len(hidden))
-    changed = True
-    while changed:
-      before = 0
-      new_zeros = np.zeros(len(hidden))
-      zero_indeg = hidden[(indeg == 0) & (zeros == 0)]
-      zero_outdeg = hidden[(outdeg == 0) & (zeros == 0)]
-      new_zeros[np.isin(hidden, zero_indeg)] = 1
-      new_zeros[np.isin(hidden, zero_outdeg)] = 1
-      after = np.count_nonzero(new_zeros)
-      changed = before != after
-      if not changed:
-        break
-      zeros[new_zeros == 1] = 1
-      for i in range(len(conn[0])):
-        if new_zeros[np.isin(hidden, conn[1,i])] == 1:
-          indeg[np.isin(hidden, conn[2,i])] -= 1
-        if new_zeros[np.isin(hidden, conn[2,i])] == 1:
-          outdeg[np.isin(hidden, conn[1,i])] -= 1
+    queue = set(hidden[(indeg == 0) | (outdeg == 0)])
+    while len(queue):
+      zeros[np.isin(hidden, queue)] = 1
+      new_queue = set()
+      for i in range(len(hidden_conn[0])):
+        if hidden_conn[1,i] in queue and hidden_conn[2,i] in lookup:
+          indeg[lookup[hidden_conn[2,i]]] -= 1
+          assert indeg[lookup[hidden_conn[2,i]]] >= 0, f'Innovation record corrupted {indeg[lookup[hidden_conn[2,i]]]}'
+          if indeg[lookup[hidden_conn[2,i]]] == 0:
+            new_queue.add(hidden_conn[2,i])
+        if hidden_conn[2,i] in queue and hidden_conn[1,i] in lookup:
+          outdeg[lookup[hidden_conn[1,i]]] -= 1
+          assert outdeg[lookup[hidden_conn[1,i]]] >= 0, f'Innovation record corrupted {outdeg[lookup[hidden_conn[1,i]]]}'
+          if outdeg[lookup[hidden_conn[1,i]]] == 0:
+            new_queue.add(hidden_conn[1,i])
+      queue = new_queue
     
     required = np.append(required, hidden[zeros == 0])
     

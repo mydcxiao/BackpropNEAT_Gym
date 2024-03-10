@@ -234,8 +234,8 @@ def compatDist(self, ref, ind):
   # Normalize and take weighted sum
   nInitial = self.p['ann_nInput'] + self.p['ann_nOutput']
   longestGenome = max(len(IA),len(IB)) - nInitial
-  # weightDiff = np.mean(weightDiff)
-  weightDiff = np.mean(weightDiff) / (1 + np.max(weightDiff))
+  weightDiff = np.mean(weightDiff)
+  # weightDiff = np.mean(weightDiff) / (1 + np.max(weightDiff))
   geneDiff   = geneDiff   / (1+longestGenome) # this can be bigger than 1 but less than 2
   # geneDiff = geneDiff / (len(IA) + len(IB) - 2*nInitial)
 
