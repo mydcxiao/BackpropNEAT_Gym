@@ -110,7 +110,7 @@ def assignSpecies(self, species, pop, p):
 
   assert p['spec_thresh'] > 0, "ERROR: Species threshold must be positive"
   # Assign members of population to first species within compat distance
-  need_more_species = False
+  # need_more_species = False
   for i in range(len(pop)):
     candidates = []
     iSpec = 0
@@ -130,14 +130,14 @@ def assignSpecies(self, species, pop, p):
     elif len(species) >= p['spec_target']:
       pop[i].species = best_iSpec
       species[best_iSpec].members.append(pop[i])
-      need_more_species = True
+      # need_more_species = True
     # If no seed is close enough, start your own species
     else:
       pop[i].species = iSpec
       species.append(Species(pop[i]))
   
-  if need_more_species:
-    p['spec_thresh'] += p['spec_compatMod']
+  # if need_more_species:
+  #   p['spec_thresh'] += p['spec_compatMod']
   
   return species, pop
 
@@ -178,23 +178,27 @@ def assignOffspring(self, species, pop, p):
 
     # Best and Average Fitness of Each Species
     speciesFit = np.zeros((nSpecies,1))
-    speciesTop = np.zeros((nSpecies,1))
+    # speciesTop = np.zeros((nSpecies,1))
     for iSpec in range(nSpecies):
       if not np.any(specId==iSpec):
         speciesFit[iSpec] = 0
       else:
         speciesFit[iSpec] = np.mean(rankScore[specId==iSpec])
-        speciesTop[iSpec] = np.max(popFit[specId==iSpec])
+        # speciesTop[iSpec] = np.max(popFit[specId==iSpec])
+        speciesTopId = np.argmax([species[iSpec].members[i].fitness for i in range(len(species[iSpec].members))])
+        speciesTop = species[iSpec].members[speciesTopId].fitness
 
         # Did the species improve?
-        if speciesTop[iSpec] > species[iSpec].bestFit:
-          species[iSpec].bestFit = speciesTop[iSpec]
-          bestId = np.argmax(popFit[specId==iSpec])
-          species[iSpec].bestInd = species[iSpec].members[bestId]
+        # if speciesTop[iSpec] > species[iSpec].bestFit:
+        if speciesTop > species[iSpec].bestFit:
+          # species[iSpec].bestFit = speciesTop[iSpec]
+          species[iSpec].bestFit = speciesTop
+          # bestId = np.argmax(popFit[specId==iSpec])
+          # species[iSpec].bestInd = species[iSpec].members[bestId]
+          species[iSpec].bestInd = species[iSpec].members[speciesTopId]
           species[iSpec].lastImp = 0
         else:
-          bestId = np.argmax(popFit[specId==iSpec])
-          species[iSpec].bestInd = species[iSpec].members[bestId]
+          species[iSpec].bestInd = species[iSpec].members[speciesTopId]
           species[iSpec].lastImp += 1
 
         # Stagnant species don't recieve species fitness

@@ -13,11 +13,11 @@ def evolvePop(self):
   best = max(range(len(self.species)), key=lambda i: self.species[i].bestInd.fitness)
   for i in range(len(self.species)):
     children, self.innov = self.recombine(self.species[i],\
-                           self.innov, self.gen, i==worst, best=best)
+                           self.innov, self.gen, i if i==worst else None, best=best)
     newPop.append(children)
   self.pop = list(itertools.chain.from_iterable(newPop))   
   
-def recombine(self, species, innov, gen, worst=False, best=None):
+def recombine(self, species, innov, gen, worst=None, best=None):
   """ Creates next generation of child solutions from a species
 
   Procedure:
@@ -50,26 +50,29 @@ def recombine(self, species, innov, gen, worst=False, best=None):
   pop = species.members
   children = []
   
-  if worst and len(self.species) > 1:
+  extincted = False
+  if worst is not None and len(self.species) == p['spec_target']:
     prob = p['spec_extinctProb'] if 'spec_extinctProb' in p else 0
     if np.random.rand() < prob:
       pop = self.species[best].members
       species.seed = self.species[best].seed
+      extincted = True
   
   # Sort by rank
   pop.sort(key=lambda x: x.rank)
 
-  # Cull  - eliminate worst individuals from breeding pool
-  numberToCull = int(np.floor(p['select_cullRatio'] * len(pop)))
-  if numberToCull > 0:
-    pop[-numberToCull:] = []     
+  if not extincted:
+    # Cull  - eliminate worst individuals from breeding pool
+    numberToCull = int(np.floor(p['select_cullRatio'] * len(pop)))
+    if numberToCull > 0:
+      pop[-numberToCull:] = []     
 
-  # Elitism - keep best individuals unchanged
-  # nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
-  nElites = int(np.ceil(len(pop)*p['select_eliteRatio']))
-  for i in range(nElites):
-    children.append(pop[i])
-    nOffspring -= 1
+    # Elitism - keep best individuals unchanged
+    # nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
+    nElites = int(np.ceil(len(pop)*p['select_eliteRatio']))
+    for i in range(nElites):
+      children.append(pop[i])
+      nOffspring -= 1
   
   if nOffspring > 0: #TODO: why is this necessary?
     # Get parent pairs via tournament selection
