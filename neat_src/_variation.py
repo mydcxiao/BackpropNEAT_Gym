@@ -9,13 +9,15 @@ def evolvePop(self):
   Wrapper which calls 'recombine' on every species and combines all offspring into a new population. When speciation is not used, the entire population is treated as a single species.
   """
   newPop = []
+  worst = min(range(len(self.species)), key=lambda i: self.species[i].bestInd.fitness)
+  best = max(range(len(self.species)), key=lambda i: self.species[i].bestInd.fitness)
   for i in range(len(self.species)):
     children, self.innov = self.recombine(self.species[i],\
-                           self.innov, self.gen)
+                           self.innov, self.gen, i==worst, best=best)
     newPop.append(children)
   self.pop = list(itertools.chain.from_iterable(newPop))   
   
-def recombine(self, species, innov, gen):
+def recombine(self, species, innov, gen, worst=False, best=None):
   """ Creates next generation of child solutions from a species
 
   Procedure:
@@ -48,6 +50,11 @@ def recombine(self, species, innov, gen):
   pop = species.members
   children = []
   
+  if worst and len(self.species) > 1:
+    prob = p['spec_extinctProb'] if 'spec_extinctProb' in p else 0
+    if np.random.rand() < prob:
+      pop = self.species[best].members
+  
   # Sort by rank
   pop.sort(key=lambda x: x.rank)
 
@@ -66,10 +73,10 @@ def recombine(self, species, innov, gen):
   if nOffspring > 0: #TODO: why is this necessary?
     # Get parent pairs via tournament selection
     # -- As individuals are sorted by fitness, index comparison is 
-    # enough. In the case of ties the first individual wins
-      
+    # enough. In the case of ties the first individual wins    
+    
     parentA = np.random.randint(len(pop),size=(nOffspring,p['select_tournSize'])) 
-    parentB = np.random.randint(len(pop),size=(nOffspring,p['select_tournSize']))
+    parentB = np.random.randint(len(pop),size=(nOffspring,p['select_tournSize']))  
     parents = np.vstack( (np.min(parentA,1), np.min(parentB,1) ) )
     parents = np.sort(parents,axis=0) # Higher fitness parent first    
     

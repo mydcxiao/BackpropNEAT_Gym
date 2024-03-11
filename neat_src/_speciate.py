@@ -103,7 +103,7 @@ def assignSpecies(self, species, pop, p):
       new_seed = pop[new_seed_id]
       species[iSpec].seed = new_seed
       # species[iSpec].bestFit = new_seed.fitness
-      species[iSpec].bestInd = new_seed
+      # species[iSpec].bestInd = new_seed
       # species[iSpec].members = [new_seed]
       species[iSpec].members = []
       unspeciated.remove(new_seed_id)
@@ -185,6 +185,8 @@ def assignOffspring(self, species, pop, p):
           species[iSpec].bestInd = species[iSpec].members[bestId]
           species[iSpec].lastImp = 0
         else:
+          bestId = np.argmax(popFit[specId==iSpec])
+          species[iSpec].bestInd = species[iSpec].members[bestId]
           species[iSpec].lastImp += 1
 
         # Stagnant species don't recieve species fitness
