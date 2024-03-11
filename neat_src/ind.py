@@ -215,9 +215,10 @@ class Ind():
           connChild = np.hstack((connChild,connB[:,bInd]))
         else:
           detect_cycle = True
+          break
     
     if detect_cycle:
-      connChild, nodeChild = self.create_feed_forward(connChild, nodeChild)
+      connChild, nodeChild = connA, nodeA
     child = Ind(connChild, nodeChild)
     
     return child
@@ -537,64 +538,3 @@ class Ind():
         q = q[l:]
 
     return False
-          
-  def required_for_output(self, nIns, nOuts, conn, node):
-    required = np.arange(nIns+nOuts)
-    hidden = node[0, nIns+nOuts:]
-    hidden_conn = conn[:,nIns*nOuts:]
-    
-    if len(hidden) == 0:
-      return required
-    
-    lookup = {hidden[i]: i for i in range(len(hidden))}
-    adj_in, adj_out = {}, {}
-    for i in range(len(hidden_conn[0])):
-      if hidden_conn[1,i] in lookup and hidden_conn[2,i] in lookup:
-        if hidden_conn[2,i] not in adj_in:
-          adj_in[hidden_conn[2,i]] = []
-        if hidden_conn[1,i] not in adj_out:
-          adj_out[hidden_conn[1,i]] = []
-        adj_in[hidden_conn[2,i]].append(hidden_conn[1,i])
-        adj_out[hidden_conn[1,i]].append(hidden_conn[2,i])
-    
-    indeg = np.zeros(len(hidden))
-    outdeg = np.zeros(len(hidden))
-    for i in range(len(hidden_conn[0])):
-      if hidden_conn[1,i] in lookup:
-        outdeg[lookup[hidden_conn[1,i]]] += 1
-      if hidden_conn[2,i] in lookup:
-        indeg[lookup[hidden_conn[2,i]]] += 1
-    
-    zeros = np.zeros(len(hidden))
-    queue = set(hidden[(indeg == 0) | (outdeg == 0)])
-    while len(queue):
-      zeros[np.isin(hidden, queue)] = 1
-      new_queue = set()
-      for node in queue:
-        if node in adj_out:
-          for i in adj_out[node]:
-            indeg[lookup[i]] -= 1
-            assert indeg[lookup[i]] >= 0, f'Innovation record corrupted {indeg[lookup[i]]}'
-            if indeg[lookup[i]] == 0:
-              new_queue.add(i)
-          adj_out.pop(node)
-        if node in adj_in:
-          for i in adj_in[node]:
-            outdeg[lookup[i]] -= 1
-            assert outdeg[lookup[i]] >= 0, f'Innovation record corrupted {outdeg[lookup[i]]}'
-            if outdeg[lookup[i]] == 0:
-              new_queue.add(i)
-          adj_in.pop(node)
-      queue = new_queue
-    
-    required = np.append(required, hidden[zeros == 0])
-    
-    return required
-  
-  def create_feed_forward(self, conn, node):
-    nIns = len(node[0,node[1,:] == 1]) + len(node[0,node[1,:] == 4])
-    nOuts = len(node[0,node[1,:] == 2])
-    required = self.required_for_output(nIns, nOuts, conn, node)
-    node = node[:,np.isin(node[0,:], required)]
-    conn = conn[:,np.isin(conn[1,:], required) & np.isin(conn[2,:], required)]
-    return conn, node
