@@ -261,17 +261,22 @@ class Ind():
     nodeG = np.copy(self.node)
 
     
-    # - Re-enable connections
-    disabled  = np.where(connG[4,:] == 0)[0]
-    reenabled = np.random.rand(1,len(disabled)) < p['prob_enable']
-    connG[4,disabled] = reenabled
-         
     # - Weight mutation
     # [Canonical NEAT: 10% of weights are fully random...but seriously?]
     mutatedWeights = np.random.rand(1,nConn) < p['prob_mutConn'] # Choose weights to mutate
     weightChange = mutatedWeights * np.random.randn(1,nConn) * p['ann_mutSigma']
     connG[3,:] += weightChange[0]
     connG[4,connG[3,:]==0] = 0 # DEBUG: Disable connections with zero weight
+         
+    # - Re-enable connections
+    disabled  = np.where(connG[4,:] == 0)[0]
+    # reenabled = np.random.rand(1,len(disabled)) < p['prob_enable']
+    # connG[4,disabled] = reenabled
+    is_reenabled = False
+    if len(disabled) > 0:
+      selected = np.random.choice(disabled)
+      connG[4,selected] = 1 if np.random.rand() < p['prob_enable'] else 0
+      is_reenabled = True if connG[4,selected] == 1 else False
     
     # Clamp weight strength [ Warning given for nan comparisons ]  
     connG[3, (connG[3,:] >  p['ann_absWCap'])] =  p['ann_absWCap']
@@ -283,7 +288,7 @@ class Ind():
     if (np.random.rand() < p['prob_addNode']) and np.any(connG[4,:]==1):
       connG, nodeG, innov = self.mutAddNode(connG, nodeG, innov, gen, p)
     
-    if (np.random.rand() < p['prob_addConn']):
+    if (np.random.rand() < p['prob_addConn']) and not is_reenabled:
       connG, innov = self.mutAddConn(connG, nodeG, innov, gen, p) 
     
     child = Ind(connG, nodeG)
