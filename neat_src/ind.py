@@ -276,6 +276,7 @@ class Ind():
     if len(disabled) > 0:
       selected = np.random.choice(disabled)
       connG[4,selected] = 1 if np.random.rand() < p['prob_enable'] else 0
+      connG[3,selected] = 1.0 if connG[3,selected] == 0 and connG[4,selected] == 1 else connG[3,selected]
       is_reenabled = True if connG[4,selected] == 1 else False
     
     # Clamp weight strength [ Warning given for nan comparisons ]  
