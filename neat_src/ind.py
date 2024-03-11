@@ -219,6 +219,7 @@ class Ind():
     
     if detect_cycle:
       connChild, nodeChild = connA, nodeA
+    
     child = Ind(connChild, nodeChild)
     
     return child

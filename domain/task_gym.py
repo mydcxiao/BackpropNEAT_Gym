@@ -191,8 +191,8 @@ class GymTask():
         step_size = hyp['step_size'] if 'step_size' in hyp else 0.01
         grad_clip = hyp['ann_absWCap'] / 10.0
         weight_decay = hyp['weight_decay'] if 'weight_decay' in hyp else 0.001
+        alpha = hyp['alpha'] if 'alpha' in hyp else 0.99
         avg_vel = 0
-        alpha = 0.99
         eps = 1e-8
         while not done:
           y = self.env.get_labels()
