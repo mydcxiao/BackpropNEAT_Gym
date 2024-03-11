@@ -110,6 +110,7 @@ def assignSpecies(self, species, pop, p):
 
   assert p['spec_thresh'] > 0, "ERROR: Species threshold must be positive"
   # Assign members of population to first species within compat distance
+  need_more_species = False
   for i in range(len(pop)):
     candidates = []
     iSpec = 0
@@ -123,13 +124,20 @@ def assignSpecies(self, species, pop, p):
     # find best species to assign to
     # if len(candidates) > 0:
     min_cDist, best_iSpec = min(candidates, key=lambda x: x[0])
-    if min_cDist < p['spec_thresh'] or len(species) >= p['spec_target']:
+    if min_cDist < p['spec_thresh']:
       pop[i].species = best_iSpec
       species[best_iSpec].members.append(pop[i])
+    elif len(species) >= p['spec_target']:
+      pop[i].species = best_iSpec
+      species[best_iSpec].members.append(pop[i])
+      need_more_species = True
     # If no seed is close enough, start your own species
     else:
       pop[i].species = iSpec
       species.append(Species(pop[i]))
+  
+  if need_more_species:
+    p['spec_thresh'] += p['spec_compatMod']
   
   return species, pop
 
