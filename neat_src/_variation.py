@@ -54,6 +54,7 @@ def recombine(self, species, innov, gen, worst=False, best=None):
     prob = p['spec_extinctProb'] if 'spec_extinctProb' in p else 0
     if np.random.rand() < prob:
       pop = self.species[best].members
+      species.seed = self.species[best].seed
   
   # Sort by rank
   pop.sort(key=lambda x: x.rank)
