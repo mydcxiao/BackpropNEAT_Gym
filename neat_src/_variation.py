@@ -51,22 +51,25 @@ def recombine(self, species, innov, gen, worst=None, best=None):
   children = []
   
   extincted = False
-  if worst is not None and len(self.species) == p['spec_target']:
-    prob = p['spec_extinctProb'] if 'spec_extinctProb' in p else 0
-    if np.random.rand() < prob:
-      pop = self.species[best].members
-      species.seed = self.species[best].seed
-      extincted = True
+  if worst is not None:
+    worst_fit, best_fit = self.species[worst].bestInd.fitness, self.species[best].bestInd.fitness
+    worst_nConn, best_nConn = self.species[worst].bestInd.nConn, self.species[best].bestInd.nConn
+    if abs(worst_fit / (1 + p['connPenalty'] * np.sqrt(worst_nConn))) > 1.2 * abs(best_fit / (1 + p['connPenalty'] * np.sqrt(best_nConn))):
+      prob = p['spec_extinctProb'] if 'spec_extinctProb' in p else 0
+      if np.random.rand() < prob:
+        pop = self.species[best].members
+        self.species[worst].seed = self.species[best].seed
+        extincted = True
   
   # Sort by rank
   pop.sort(key=lambda x: x.rank)
 
-  if not extincted:
-    # Cull  - eliminate worst individuals from breeding pool
-    numberToCull = int(np.floor(p['select_cullRatio'] * len(pop)))
-    if numberToCull > 0:
-      pop[-numberToCull:] = []     
+  # Cull  - eliminate worst individuals from breeding pool
+  numberToCull = int(np.floor(p['select_cullRatio'] * len(pop)))
+  if numberToCull > 0:
+    pop[-numberToCull:] = []     
 
+  if not extincted:
     # Elitism - keep best individuals unchanged
     # nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
     nElites = int(np.ceil(len(pop)*p['select_eliteRatio']))
