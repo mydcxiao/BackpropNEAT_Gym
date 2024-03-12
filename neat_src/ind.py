@@ -156,8 +156,8 @@ class Ind():
     # child.conn[3,IA[bGenes[0]]] = parentB.conn[3,IB[bGenes[0]]]
 
     # < ---- True NEAT Crossover ---- >
-    connA, nodeA = np.copy(parentA.conn), np.copy(parentA.node)
-    connB, nodeB = np.copy(parentB.conn), np.copy(parentB.node)
+    connA, nodeA = parentA.conn, parentA.node
+    connB, nodeB = parentB.conn, parentB.node
 
     connChild = np.empty((5,0))
     nodeChild = np.empty((3,0))
