@@ -77,7 +77,7 @@ class GymTask():
         wVec_ori = wVec.copy()
         wVec_prev = wVec.copy()
         for iRep in range(nRep):
-          final_error, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, hyp=hyp, backprop_eval=backprop_eval, gradMask=gradMask)
+          final_error, wVec = self.testInd(wVec, aVec, view=view, seed=seed+iRep, hyp=hyp, backprop_eval=backprop_eval, gradMask=gradMask, first_epoch=iRep==0)
           if final_error > init_error:
             wVec = wVec_prev
             break
@@ -101,7 +101,7 @@ class GymTask():
         return np.mean(reward)
         
 
-  def testInd(self, wVec, aVec, view=False, seed=-1, hyp=None, backprop_eval=False, gradMask=None):
+  def testInd(self, wVec, aVec, view=False, seed=-1, hyp=None, backprop_eval=False, gradMask=None, first_epoch=False):
     """Evaluate individual on task
     Args:
       wVec    - (np_array) - weight matrix as a flattened vector
@@ -192,15 +192,15 @@ class GymTask():
         grad_clip = hyp['ann_absWCap'] / 10.0
         weight_decay = hyp['weight_decay'] if 'weight_decay' in hyp else 0.001
         alpha = hyp['alpha'] if 'alpha' in hyp else 0.99
-        avg_vel = 0
+        self.avg_vel = 0 if first_epoch else self.avg_vel
         eps = 1e-8
         while not done:
           y = self.env.get_labels()
           grads = grad(loss)(wVec, state=state, y=y)
           grads = jnp.where(jnp.isnan(grads), 0, grads)
-          avg_vel = alpha * avg_vel + (1 - alpha) * jnp.square(grads)
+          self.avg_vel = alpha * self.avg_vel + (1 - alpha) * jnp.square(grads)
           grads = jnp.clip(grads, -grad_clip, grad_clip)
-          wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.maximum(jnp.square(avg_vel), eps)))) - weight_decay * wVec
+          wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.maximum(jnp.square(self.avg_vel), eps)))) - weight_decay * wVec
           wVec = jnp.clip(wVec, -hyp['ann_absWCap'], hyp['ann_absWCap'])
           state, _, done, _ = self.env.step(None)
           # if view:
