@@ -202,7 +202,6 @@ backprop_cls = Game(env_name='BackpropClassify',
   layers=[20, 20],
   i_act=np.full(2,1),
   h_act=[1,3,4,5,6,7,8,9,11],
-  # h_act=[1,8,9,11], # XOR
   o_act=np.full(1,1),
   weightCap = 50.0,
   noise_bias=0.0,
