@@ -9,15 +9,13 @@ def evolvePop(self):
   Wrapper which calls 'recombine' on every species and combines all offspring into a new population. When speciation is not used, the entire population is treated as a single species.
   """
   newPop = []
-  worst = min(range(len(self.species)), key=lambda i: self.species[i].bestInd.fitness)
-  best = max(range(len(self.species)), key=lambda i: self.species[i].bestInd.fitness)
   for i in range(len(self.species)):
     children, self.innov = self.recombine(self.species[i],\
-                           self.innov, self.gen, i if i==worst else None, best=best)
+                           self.innov, self.gen)
     newPop.append(children)
   self.pop = list(itertools.chain.from_iterable(newPop))   
   
-def recombine(self, species, innov, gen, worst=None, best=None):
+def recombine(self, species, innov, gen):
   """ Creates next generation of child solutions from a species
 
   Procedure:
@@ -50,17 +48,6 @@ def recombine(self, species, innov, gen, worst=None, best=None):
   pop = species.members
   children = []
   
-  extincted = False
-  if worst is not None:
-    worst_fit, best_fit = self.species[worst].bestInd.fitness, self.species[best].bestInd.fitness
-    worst_nConn, best_nConn = self.species[worst].bestInd.nConn, self.species[best].bestInd.nConn
-    if abs(worst_fit / (1 + p['connPenalty'] * np.sqrt(worst_nConn))) > 1.2 * abs(best_fit / (1 + p['connPenalty'] * np.sqrt(best_nConn))):
-      prob = p['spec_extinctProb'] if 'spec_extinctProb' in p else 0
-      if np.random.rand() < prob:
-        pop = self.species[best].members
-        self.species[worst].seed = self.species[best].seed
-        extincted = True
-  
   # Sort by rank
   pop.sort(key=lambda x: x.rank)
 
@@ -69,13 +56,12 @@ def recombine(self, species, innov, gen, worst=None, best=None):
   if numberToCull > 0:
     pop[-numberToCull:] = []     
 
-  if not extincted:
-    # Elitism - keep best individuals unchanged
-    # nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
-    nElites = int(np.ceil(len(pop)*p['select_eliteRatio']))
-    for i in range(nElites):
-      children.append(pop[i])
-      nOffspring -= 1
+  # Elitism - keep best individuals unchanged
+  # nElites = int(np.floor(len(pop)*p['select_eliteRatio']))
+  nElites = int(np.ceil(len(pop)*p['select_eliteRatio']))
+  for i in range(nElites):
+    children.append(pop[i])
+    nOffspring -= 1
   
   if nOffspring > 0: #TODO: why is this necessary?
     # Get parent pairs via tournament selection
