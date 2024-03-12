@@ -159,17 +159,56 @@ class Ind():
     connA, nodeA = np.copy(parentA.conn), np.copy(parentA.node)
     connB, nodeB = np.copy(parentB.conn), np.copy(parentB.node)
 
+    connChild = np.empty((5,0))
+    nodeChild = np.empty((3,0))
+    
+    connAId, connBId = connA[0,:], connB[0,:]
+    overlapConn = np.intersect1d(connAId,connBId)
+    diffConnA = np.setdiff1d(connAId,connBId) # setdiffid only return different elements in first argument
+    diffConnB = np.setdiff1d(connBId,connAId) # setdiffid only return different elements in first argument
+    allConn = np.concatenate((overlapConn,diffConnA,diffConnB))
+    overlapConn_len, diffConnA_len = len(overlapConn), len(diffConnA)
+    detect_cycle = False
+    for i in range(len(allConn)):
+      id = allConn[i]
+      aInd = np.where(connAId==id)[0]
+      bInd = np.where(connBId==id)[0]
+      if i < overlapConn_len:
+        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        if np.random.rand() < 0.5:
+          connChild = np.hstack((connChild,connA[:,aInd]))
+        else:
+          connChild = np.hstack((connChild,connB[:,bInd]))
+        if (connA[4,aInd[0]] == 0) and (connB[4,bInd[0]] == 0):
+          connChild[4,-1] = 0
+        else:
+          connChild[4,-1] = 1
+          connChild[3,-1] = connChild[3,-1] if connChild[3,-1] != 0 else 1 # avoid zero weight connections
+      elif i < overlapConn_len + diffConnA_len:
+        assert len(aInd) == 1 and len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+        connChild = np.hstack((connChild,connA[:,aInd]))
+      else:
+        assert len(aInd) == 0 and len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        if not self.create_cycle(connChild, connB[:,bInd]): # avoid recurrent connections
+          connChild = np.hstack((connChild,connB[:,bInd]))
+        else:
+          detect_cycle = True
+          break
+    
+    if detect_cycle:
+      connChild, nodeChild = connA, nodeA
+      return Ind(connChild, nodeChild)
+      
     nodeAId, nodeBId = nodeA[0,:], nodeB[0,:]
     overlapNode = np.intersect1d(nodeAId,nodeBId)
     diffNode = np.setxor1d(nodeAId,nodeBId)
     allNode = np.concatenate((overlapNode,diffNode)) # no need to sort, np.intersect1d already sorted and nIns and nOuts are always the smallest
-    overlapNode = set(overlapNode)
-    nodeChild = np.empty((3,0))
+    overlapNode_len = len(overlapNode)
     for i in range(len(allNode)):
       id = allNode[i]
       aInd = np.where(nodeAId==id)[0]
       bInd = np.where(nodeBId==id)[0]
-      if id in overlapNode:
+      if i < overlapNode_len:
         assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
         if np.random.rand() < 0.5:
           nodeChild = np.hstack((nodeChild,nodeA[:,aInd]))
@@ -183,43 +222,6 @@ class Ind():
           assert len(aInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
           nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
 
-    connAId, connBId = connA[0,:], connB[0,:]
-    overlapConn = np.intersect1d(connAId,connBId)
-    diffConnA = np.setdiff1d(connAId,connBId) # setdiffid only return different elements in first argument
-    diffConnB = np.setdiff1d(connBId,connAId) # setdiffid only return different elements in first argument
-    allConn = np.concatenate((overlapConn,diffConnA,diffConnB))
-    overlapConn, diffConnA, diffConnB = set(overlapConn), set(diffConnA), set(diffConnB)
-    connChild = np.empty((5,0))
-    detect_cycle = False
-    for i in range(len(allConn)):
-      id = allConn[i]
-      aInd = np.where(connAId==id)[0]
-      bInd = np.where(connBId==id)[0]
-      if id in overlapConn:
-        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
-        if np.random.rand() < 0.5:
-          connChild = np.hstack((connChild,connA[:,aInd]))
-        else:
-          connChild = np.hstack((connChild,connB[:,bInd]))
-        if (connA[4,aInd[0]] == 0) and (connB[4,bInd[0]] == 0):
-          connChild[4,-1] = 0
-        else:
-          connChild[4,-1] = 1
-          connChild[3,-1] = connChild[3,-1] if connChild[3,-1] != 0 else 1 # avoid zero weight connections
-      elif id in diffConnA:
-        assert len(aInd) == 1 and len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
-        connChild = np.hstack((connChild,connA[:,aInd]))
-      else:
-        assert len(aInd) == 0 and len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
-        if not self.create_cycle(connChild, connB[:,bInd]): # avoid recurrent connections
-          connChild = np.hstack((connChild,connB[:,bInd]))
-        else:
-          detect_cycle = True
-          break
-    
-    if detect_cycle:
-      connChild, nodeChild = connA, nodeA
-    
     child = Ind(connChild, nodeChild)
     
     return child

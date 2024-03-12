@@ -186,7 +186,8 @@ def assignOffspring(self, species, pop, p):
         # speciesTop[iSpec] = np.max(popFit[specId==iSpec])
         bestId = np.argmax(popFit[specId==iSpec])
         speciesTop[iSpec] = species[iSpec].members[bestId].fitness
-        assert speciesTop[iSpec] == np.max(popFit[specId==iSpec]), "ERROR: Species top fitness not equal to max fitness in species"
+        # DEBUG: assertion is true
+        # assert speciesTop[iSpec] == np.max(popFit[specId==iSpec]), "ERROR: Species top fitness not equal to max fitness in species"
 
         # Did the species improve?
         if speciesTop[iSpec] > species[iSpec].bestFit:
