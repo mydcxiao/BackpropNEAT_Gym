@@ -36,12 +36,12 @@ class BackpropClassifyEnv(gym.Env):
     if type:
       self._generate_data(type=type, seed=seed, noise=noise, num=num)
     
-    nInputs = np.shape(self.trainSet)[1]
-    high = np.array([1.0]*nInputs)
+    # nInputs = np.shape(self.trainSet)[1]
+    # high = np.array([1.0]*nInputs)
     self.action_space = spaces.Box(np.array(0,dtype=np.float32), \
-                                   np.array(1,dtype=np.float32))
+                                   np.array(1,dtype=np.float32), dtype=np.float32)
     self.observation_space = spaces.Box(np.array(0,dtype=np.float32), \
-                                   np.array(1,dtype=np.float32))
+                                   np.array(1,dtype=np.float32), dtype=np.float32)
 
     self.state = None
     self.trainOrder = None

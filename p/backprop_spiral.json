@@ -28,9 +28,9 @@
     "bestReps": 1,
     "backprop": true,
     "step_size": 0.01,
-    "connPenalty": 5e-3,
+    "connPenalty": 1e-4,
     "batch_size": 10,
-    "alpha": 0.9,
-    "weight_decay": 1e-2,
+    "alpha": 0.99,
+    "weight_decay": 1e-3,
     "spec_smooth": 0.05
 }
