@@ -233,7 +233,7 @@ def applyAct(actId, x, backprop=False):
       #value = (np.tanh(50*x/2.0) + 1.0)/2.0
 
     elif actId == 3: # Sin
-      value = np.sin(x) 
+      value = np.sin(np.pi*x) 
 
     elif actId == 4: # Gaussian with mean 0 and sigma 1
       value = np.exp(-np.multiply(x, x) / 2.0)
@@ -254,7 +254,7 @@ def applyAct(actId, x, backprop=False):
       value = np.maximum(0, x)   
 
     elif actId == 10: # Cosine
-      value = np.cos(x)
+      value = np.cos(np.pi*x)
 
     elif actId == 11: # Squared
       value = np.square(x)
@@ -271,7 +271,7 @@ def applyAct(actId, x, backprop=False):
       raise ValueError("Unsigned Step Function is not differentiable")
 
     elif actId == 3: # Sin
-      value = jnp.sin(x) 
+      value = jnp.sin(jnp.pi*x) 
 
     elif actId == 4: # Gaussian with mean 0 and sigma 1
       value = jnp.exp(-jnp.multiply(x, x) / 2.0)
@@ -292,7 +292,7 @@ def applyAct(actId, x, backprop=False):
       value = jnp.maximum(0, x)   
 
     elif actId == 10: # Cosine
-      value = jnp.cos(x)
+      value = jnp.cos(jnp.pi*x)
 
     elif actId == 11: # Squared
       value = jnp.square(x)
