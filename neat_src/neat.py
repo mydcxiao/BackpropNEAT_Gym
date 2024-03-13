@@ -102,7 +102,7 @@ class Neat():
     pop = []
     for i in range(p['popSize']):
         newInd = Ind(conn, node)
-        newInd.conn[3,:] = 2*(np.random.rand(1,nConn)-0.5)
+        newInd.conn[3,:] = 2*(np.random.rand(1,nConn)-0.5) * p['ann_mutSigma']
         newInd.conn[4,:] = np.random.rand(1,nConn) < p['prob_initEnable']
         newInd.express()
         newInd.birth = 0

@@ -285,13 +285,11 @@ class Ind():
       connG, nodeG, innov = self.mutAddNode(connG, nodeG, innov, gen, p)
     
     disabled = np.where(connG[4,:] == 0)[0]
-    is_reenabled = False
     if len(disabled) > 0:
       selected = np.random.choice(disabled)
       connG[4,selected] = 1 if np.random.rand() < p['prob_enable'] else 0
-      is_reenabled = True if connG[4,selected] == 1 else False
     
-    if (np.random.rand() < p['prob_addConn']) and not is_reenabled:
+    if (np.random.rand() < p['prob_addConn']):
       connG, innov = self.mutAddConn(connG, nodeG, innov, gen, p) 
     
     child = Ind(connG, nodeG)
