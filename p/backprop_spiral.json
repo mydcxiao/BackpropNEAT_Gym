@@ -1,14 +1,14 @@
 {
     "task":"backprop_spiral",
     "maxGen": 50,
-    "popSize": 200,
+    "popSize": 150,
     "alg_nReps": 30,
     "alg_speciate": "neat",
     "alg_probMoo": 0.0,
     "alg_act": 0,
     "prob_addConn": 0.5,
     "prob_addNode": 0.2,
-    "prob_crossover": 0.8, 
+    "prob_crossover": 0.6, 
     "prob_enable": 0.5,
     "prob_mutAct": 0.0,
     "prob_mutConn": 0.1,
@@ -30,7 +30,7 @@
     "step_size": 0.01,
     "connPenalty": 1e-3,
     "batch_size": 10,
-    "alpha": 0.9,
+    "alpha": 0.99,
     "weight_decay": 1e-3,
     "spec_smooth": 0.05
 }
