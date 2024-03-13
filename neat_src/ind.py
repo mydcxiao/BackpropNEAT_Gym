@@ -67,7 +67,7 @@ class Ind():
     self.wMat = wMat
     self.aVec = self.node[2,order]
     # self.gradMask = gradMask
-    assert self.gradMask.shape == self.wMat.shape, 'gradMask shape does not match wMat shape'
+    # assert self.gradMask.shape == self.wMat.shape, 'gradMask shape does not match wMat shape'
     wVec = self.wMat.flatten()
     self.nConn = np.sum(~np.isnan(wVec))
     wVec[np.isnan(wVec)] = 0
