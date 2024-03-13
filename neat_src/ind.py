@@ -68,9 +68,10 @@ class Ind():
     self.gradMask = gradMask
     assert self.gradMask.shape == self.wMat.shape, 'gradMask shape does not match wMat shape'
     wVec = self.wMat.flatten()
+    self.nConn = np.sum(~np.isnan(wVec))
     wVec[np.isnan(wVec)] = 0
     self.wVec  = wVec
-    self.nConn = np.sum(wVec!=0)
+    # self.nConn = np.sum(wVec!=0)
     
   def impress(self, wVec):
     order, _, _ = getNodeOrder(self.node, self.conn)
@@ -80,8 +81,7 @@ class Ind():
     for i in range(len(self.conn[0])):
       value = wMat[np.where(node_perm==self.conn[1,i])[0][0],np.where(node_perm==self.conn[2,i])[0][0]]
       if self.conn[4,i] == 1:
-        self.conn[3,i] = value if value != 0 else 1
-        self.conn[4,i] = 0 if value == 0 else 1
+        self.conn[3,i] = value
     self.express()
 
   def createChild(self, p, innov, gen=0, mate=None):
@@ -183,7 +183,6 @@ class Ind():
           connChild[4,-1] = 0
         else:
           connChild[4,-1] = 1
-          connChild[3,-1] = connChild[3,-1] if connChild[3,-1] != 0 else 1 # avoid zero weight connections
       elif i < overlapConn_len + diffConnA_len:
         assert len(aInd) == 1 and len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
         connChild = np.hstack((connChild,connA[:,aInd]))
@@ -267,7 +266,6 @@ class Ind():
     mutatedWeights = np.random.rand(1,nConn) < p['prob_mutConn'] # Choose weights to mutate
     weightChange = mutatedWeights * np.random.randn(1,nConn) * p['ann_mutSigma']
     connG[3,:] += weightChange[0]
-    connG[3,(connG[3,:]==0) & (connG[4,:]==1)] = 1.0 # DEBUG: fix zero weight connections
          
     # - Re-enable connections
     # disabled  = np.where(connG[4,:] == 0)[0]
@@ -289,7 +287,6 @@ class Ind():
     if len(disabled) > 0:
       selected = np.random.choice(disabled)
       connG[4,selected] = 1 if np.random.rand() < p['prob_enable'] else 0
-      connG[3,selected] = 1.0 if connG[3,selected] == 0 and connG[4,selected] == 1 else connG[3,selected]
       is_reenabled = True if connG[4,selected] == 1 else False
     
     if (np.random.rand() < p['prob_addConn']) and not is_reenabled:
@@ -462,7 +459,6 @@ class Ind():
         connNew[2] = nodeKey[dest[0],0]
         connNew[3] = (np.random.rand()-0.5)*2*p['ann_absWCap']
         connNew[4] = 1 
-        connNew[3] = 1 if connNew[3] == 0 else connNew[3] # DEBUG fix zero weight connections
         # connG = np.c_[connG,connNew]
         
         # deduplicate innovations

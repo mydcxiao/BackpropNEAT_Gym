@@ -15,7 +15,8 @@ def viewInd(ind, taskName):
   else:
     wMat = ind.wMat
     aVec = np.zeros((np.shape(wMat)[0]))  
-  print('# of Connections in ANN: ', np.sum(wMat!=0))
+  # print('# of Connections in ANN: ', np.sum(wMat!=0))
+  print('# of Connections in ANN: ', np.sum(~np.isnan(wMat)))
     
   # Create Graph
   nIn = env.input_size+1 # bias
@@ -63,7 +64,8 @@ def ind2graph(wMat, nIn, nOut):
     nLayer = layer[-1]
 
     # Convert wMat to Full Network Graph
-    rows, cols = np.where(wMat != 0)
+    # rows, cols = np.where(wMat != 0)
+    rows, cols = np.where(~np.isnan(wMat))
     edges = zip(rows.tolist(), cols.tolist())
     G = nx.DiGraph()
     G.add_edges_from(edges)
@@ -140,7 +142,7 @@ def drawNodeLabels(G, pos, aVec, ax=None):
   
   
 def drawEdge(G, pos, wMat, layer, ax=None):
-    wMat[np.isnan(wMat)]=0
+    # wMat[np.isnan(wMat)]=0
     # Organize edges by layer
     _, nPerLayer = np.unique(layer, return_counts=True)
     edgeLayer = []
@@ -149,9 +151,12 @@ def drawEdge(G, pos, wMat, layer, ax=None):
       tmpMat = np.copy(wMat)
       start = layBord[-i]
       end = layBord[-i+1]
-      tmpMat[:,:start] *= 0
-      tmpMat[:,end:] *= 0
-      rows, cols = np.where(tmpMat != 0)
+      # tmpMat[:,:start] *= 0
+      # tmpMat[:,end:] *= 0
+      # rows, cols = np.where(tmpMat != 0)
+      tmpMat[:,:start] = np.nan
+      tmpMat[:,end:] = np.nan
+      rows, cols = np.where(~np.isnan(tmpMat))
       edges = zip(rows.tolist(), cols.tolist())
       edgeLayer.append(nx.DiGraph())
       edgeLayer[-1].add_edges_from(edges)
@@ -169,8 +174,10 @@ def getLayer(wMat):
   Traverse wMat by row, collecting layer of all nodes that connect to you (X).
   Your layer is max(X)+1
   '''
+  wMat = wMat.copy()
+  wMat[~np.isnan(wMat)]= 1
   wMat[np.isnan(wMat)] = 0  
-  wMat[wMat!=0]=1
+  # wMat[wMat!=0]=1
   nNode = np.shape(wMat)[0]
   layer = np.zeros((nNode))
   while(True): # Loop until sorting doesn't help any more
