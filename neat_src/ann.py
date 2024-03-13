@@ -69,7 +69,8 @@ def getNodeOrder(nodeG,connG):
   for i in range(len(connMat)):
     if (len(Q) == 0) or (i >= len(Q)):
       Q = []
-      return False, False, False # Cycle found, can't sort
+      # return False, False, False # Cycle found, can't sort
+      return False, False # Cycle found, can't sort
     edge_out = connMat[Q[i],:]
     edge_in  = edge_in - edge_out # Remove nodes' conns from total
     nextNodes = np.setdiff1d(np.where(edge_in==0)[0], Q)
@@ -83,11 +84,12 @@ def getNodeOrder(nodeG,connG):
   Q = np.r_[lookup[:nIns], Q, lookup[nIns:nIns+nOuts]]
   wMat = wMat[np.ix_(Q,Q)]
   # gradMask = np.where((wMat == 0) | (np.isnan(wMat)), 0, 1).astype(np.float64) # typecast necessary for comm
-  gradMask = np.where(np.isnan(wMat), 0, 1).astype(np.float64) # typecast necessary for comm
+  # gradMask = np.where(np.isnan(wMat), 0, 1).astype(np.float64) # no need of gradMask in new implementation
   
-  assert gradMask.shape == wMat.shape, "gradMask and wMat should have the same shape"
+  # assert gradMask.shape == wMat.shape, "gradMask and wMat should have the same shape"
   
-  return Q, wMat, gradMask
+  # return Q, wMat, gradMask
+  return Q, wMat
 
 def getLayer(wMat):
   """Get layer of each node in weight matrix

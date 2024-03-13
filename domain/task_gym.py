@@ -70,6 +70,7 @@ class GymTask():
       fitness = np.mean(reward)
       return fitness
     else:
+      gradMask = gradMask if gradMask is not None else np.where(np.isnan(wVec), 0, 1)
       wVec = np.where(np.isnan(wVec), 0, wVec)
       if not backprop_eval:
         init_error = self.get_error(wVec, aVec)
