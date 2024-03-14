@@ -71,6 +71,7 @@ class GymTask():
       return fitness
     else:
       gradMask = gradMask if gradMask is not None else np.where(np.isnan(wVec), 0, 1)
+      nConn = np.sum(~np.isnan(wVec))
       wVec = np.where(np.isnan(wVec), 0, wVec)
       if not backprop_eval:
         init_error = self.get_error(wVec, aVec)
@@ -93,16 +94,16 @@ class GymTask():
           error = very_init_error
           wVec = wVec_ori
         connPenalty = hyp['connPenalty'] if 'connPenalty' in hyp else 0.03
-        reward = -error * (1+connPenalty * np.sqrt(np.count_nonzero(wVec)))
+        reward = -error * (1+connPenalty * np.sqrt(nConn))
         return reward, wVec
       else:
         reward = np.empty(nRep)
         for iRep in range(nRep):
-          reward[iRep] = self.testInd(wVec, aVec, view=view, seed=seed+iRep, hyp=hyp, backprop_eval=backprop_eval)
+          reward[iRep] = self.testInd(wVec, aVec, view=view, seed=seed+iRep, hyp=hyp, backprop_eval=backprop_eval, nConn=nConn)
         return np.mean(reward)
         
 
-  def testInd(self, wVec, aVec, view=False, seed=-1, hyp=None, backprop_eval=False, gradMask=None, first_epoch=False):
+  def testInd(self, wVec, aVec, view=False, seed=-1, hyp=None, backprop_eval=False, gradMask=None, nConn=None, first_epoch=False):
     """Evaluate individual on task
     Args:
       wVec    - (np_array) - weight matrix as a flattened vector
@@ -128,8 +129,6 @@ class GymTask():
       annOut = act(wVec, aVec, self.nInput, self.nOutput, state)  
       action = selectAct(annOut,self.actSelect)    
     
-      wVec[wVec!=0]
-      predName = str(np.mean(wVec[wVec!=0]))
       state, reward, done, info = self.env.step(action)
       
       if self.maxEpisodeLength == 0:
@@ -164,14 +163,14 @@ class GymTask():
       if backprop_eval:
         connPenalty = hyp['connPenalty'] if 'connPenalty' in hyp else 0.03
         error = self.get_error(wVec, aVec)
-        nConn = np.count_nonzero(wVec)
         totalReward = -error * (1+connPenalty * np.sqrt(nConn))
         return totalReward
       
       else:
         self.env.batch = hyp['batch_size'] if 'batch_size' in hyp else 10
-        state = self.env.reset()
         self.env.t = 0
+        state = self.env.reset()
+        y = self.env.get_labels()
         
         if jnp.ndim(wVec) < 2:
           nNodes = int(jnp.sqrt(jnp.shape(wVec)[0]))
@@ -181,7 +180,7 @@ class GymTask():
         def forward(wVec, aVec, input, output, state, y, actSelect, backprop, nNodes, gradMask):
             annOut = act(wVec, aVec, input, output, state, backprop, nNodes, gradMask)
             action = selectAct(annOut, actSelect, backprop)
-            action = jnp.clip(action, 1e-7, 1 - 1e-7)
+            action = jnp.clip(action, 1e-8, 1 - 1e-8)
             loss = -jnp.mean(y * jnp.log(action) + (1 - y) * jnp.log(1 - action))
             return loss
             
@@ -196,7 +195,6 @@ class GymTask():
         self.avg_vel = 0 if first_epoch else self.avg_vel
         eps = 1e-8
         while not done:
-          y = self.env.get_labels()
           grads = grad(loss)(wVec, state=state, y=y)
           grads = jnp.where(jnp.isnan(grads), 0, grads)
           self.avg_vel = alpha * self.avg_vel + (1 - alpha) * jnp.square(grads)
@@ -204,6 +202,7 @@ class GymTask():
           wVec = wVec - step_size * (grads / (jnp.sqrt(jnp.maximum(jnp.square(self.avg_vel), eps)))) - weight_decay * wVec
           wVec = jnp.clip(wVec, -hyp['ann_absWCap'], hyp['ann_absWCap'])
           state, _, done, _ = self.env.step(None)
+          y = self.env.get_labels()
           # if view:
           #   if self.needsClosed:
           #     self.env.render(close=done)  
@@ -213,7 +212,6 @@ class GymTask():
             state = self.env.trainSet
             y = self.env.target
             wVec_np = device_get(wVec).copy()
-            nConn = np.count_nonzero(wVec_np)
             error = self.get_error(wVec_np, aVec)
             break
         jax.clear_caches()
@@ -237,6 +235,6 @@ class GymTask():
     pred = np.where(action > 0.5, 1, 0)
     assert pred.shape == y.shape, "Prediction and target shape mismatch"
     # error = np.mean(np.abs(pred - y))
-    action = np.clip(action, 1e-7, 1 - 1e-7)
+    action = np.clip(action, 1e-8, 1 - 1e-8)
     error = -np.mean(y * np.log(action) + (1 - y) * np.log(1 - action))
     return error

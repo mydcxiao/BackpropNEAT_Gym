@@ -247,13 +247,13 @@ def applyAct(actId, x, backprop=False):
       value = np.sin(np.pi*x) 
 
     elif actId == 4: # Gaussian with mean 0 and sigma 1
-      value = np.exp(-np.multiply(x, x) / 2.0)
+      value = np.exp(-np.square(x) / 2.0)
 
     elif actId == 5: # Hyperbolic Tangent (signed)
       value = np.tanh(x)     
 
     elif actId == 6: # Sigmoid (unsigned)
-      value = (np.tanh(x/2.0) + 1.0)/2.0
+      value = np.exp(-np.logaddexp(0, -x))
 
     elif actId == 7: # Inverse
       value = -x
@@ -285,13 +285,13 @@ def applyAct(actId, x, backprop=False):
       value = jnp.sin(jnp.pi*x) 
 
     elif actId == 4: # Gaussian with mean 0 and sigma 1
-      value = jnp.exp(-jnp.multiply(x, x) / 2.0)
+      value = jnp.exp(-jnp.square(x) / 2.0)
 
     elif actId == 5: # Hyperbolic Tangent (signed)
       value = jnp.tanh(x)     
 
     elif actId == 6: # Sigmoid (unsigned)
-      value = (jnp.tanh(x/2.0) + 1.0)/2.0
+      value = jnp.exp(-jnp.logaddexp(0, -x))
 
     elif actId == 7: # Inverse
       value = -x
@@ -342,7 +342,7 @@ def selectAct(action, actSelect, backprop=False):
     elif actSelect == 'prob':
       action = weightedRandom(np.sum(action,axis=0))
     elif actSelect == 'sigmoid':
-      action = (np.tanh(action/2.0) + 1.0)/2.0
+      action = np.exp(-np.logaddexp(0, -action))
     else:
       action = action.flatten()
     return action
@@ -352,7 +352,7 @@ def selectAct(action, actSelect, backprop=False):
     elif actSelect == 'prob':
       raise ValueError("Probabilistic action selection is not differentiable")
     elif actSelect == 'sigmoid':
-      action = (jnp.tanh(action/2.0) + 1.0)/2.0
+      action = jnp.exp(-jnp.logaddexp(0, -action))
     else:
       action = action.flatten()
     return action

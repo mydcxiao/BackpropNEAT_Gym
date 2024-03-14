@@ -157,6 +157,8 @@ class Ind():
     # bGenes = np.random.rand(1,len(matching))<bProb
     # child.conn[3,IA[bGenes[0]]] = parentB.conn[3,IB[bGenes[0]]]
 
+    # return child
+    
     # < ---- True NEAT Crossover ---- >
     connA, nodeA = parentA.conn, parentA.node
     connB, nodeB = parentB.conn, parentB.node
@@ -164,42 +166,6 @@ class Ind():
     connChild = np.empty((5,0))
     nodeChild = np.empty((3,0))
     
-    connAId, connBId = connA[0,:], connB[0,:]
-    overlapConn = np.intersect1d(connAId,connBId)
-    diffConnA = np.setdiff1d(connAId,connBId) # setdiffid only return different elements in first argument
-    diffConnB = np.setdiff1d(connBId,connAId) # setdiffid only return different elements in first argument
-    allConn = np.concatenate((overlapConn,diffConnA,diffConnB))
-    overlapConn_len, diffConnA_len = len(overlapConn), len(diffConnA)
-    detect_cycle = False
-    for i in range(len(allConn)):
-      id = allConn[i]
-      aInd = np.where(connAId==id)[0]
-      bInd = np.where(connBId==id)[0]
-      if i < overlapConn_len:
-        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
-        if np.random.rand() < 0.5:
-          connChild = np.hstack((connChild,connA[:,aInd]))
-        else:
-          connChild = np.hstack((connChild,connB[:,bInd]))
-        if (connA[4,aInd[0]] == 0) and (connB[4,bInd[0]] == 0):
-          connChild[4,-1] = 0
-        else:
-          connChild[4,-1] = 1
-      elif i < overlapConn_len + diffConnA_len:
-        assert len(aInd) == 1 and len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
-        connChild = np.hstack((connChild,connA[:,aInd]))
-      else:
-        assert len(aInd) == 0 and len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
-        if not self.create_cycle(connChild, connB[:,bInd]): # avoid recurrent connections
-          connChild = np.hstack((connChild,connB[:,bInd]))
-        else:
-          detect_cycle = True
-          break
-    
-    if detect_cycle:
-      connChild, nodeChild = connA, nodeA
-      return Ind(connChild, nodeChild)
-      
     nodeAId, nodeBId = nodeA[0,:], nodeB[0,:]
     overlapNode = np.intersect1d(nodeAId,nodeBId)
     diffNode = np.setxor1d(nodeAId,nodeBId)
@@ -222,11 +188,41 @@ class Ind():
         else:
           assert len(aInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
           nodeChild = np.hstack((nodeChild,nodeB[:,bInd]))
-
-    child = Ind(connChild, nodeChild)
     
-    return child
+    connAId, connBId = connA[0,:], connB[0,:]
+    overlapConn = np.intersect1d(connAId,connBId)
+    diffConnA = np.setdiff1d(connAId,connBId) # setdiffid only return different elements in first argument
+    diffConnB = np.setdiff1d(connBId,connAId) # setdiffid only return different elements in first argument
+    allConn = np.concatenate((overlapConn,diffConnA,diffConnB))
+    overlapConn_len, diffConnA_len = len(overlapConn), len(diffConnA)
+    for i in range(len(allConn)):
+      id = allConn[i]
+      aInd = np.where(connAId==id)[0]
+      bInd = np.where(connBId==id)[0]
+      if i < overlapConn_len:
+        assert len(aInd) == len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        if np.random.rand() < 0.5:
+          connChild = np.hstack((connChild,connA[:,aInd]))
+        else:
+          connChild = np.hstack((connChild,connB[:,bInd]))
+        if (connA[4,aInd[0]] == 0) and (connB[4,bInd[0]] == 0):
+          connChild[4,-1] = 0
+        else:
+          connChild[4,-1] = 1
+      elif i < overlapConn_len + diffConnA_len:
+        assert len(aInd) == 1 and len(bInd) == 0, f'Innovation record corrupted {aInd} {bInd}'
+        connChild = np.hstack((connChild,connA[:,aInd]))
+      else:
+        assert len(aInd) == 0 and len(bInd) == 1, f'Innovation record corrupted {aInd} {bInd}'
+        connChild = np.hstack((connChild,connB[:,bInd]))
+    
+    order, _ = getNodeOrder(nodeChild, connChild)
+    
+    if order is False:
+      connChild, nodeChild = connA, nodeA
 
+    return Ind(connChild, nodeChild)
+    
   def mutate(self,p,innov=None,gen=None):
     """Randomly alter topology and weights of individual
 
@@ -284,13 +280,13 @@ class Ind():
     if (np.random.rand() < p['prob_addNode']) and np.any(connG[4,:]==1):
       connG, nodeG, innov = self.mutAddNode(connG, nodeG, innov, gen, p)
     
+    if (np.random.rand() < p['prob_addConn']):
+      connG, innov = self.mutAddConn(connG, nodeG, innov, gen, p)
+    
     disabled = np.where(connG[4,:] == 0)[0]
     if len(disabled) > 0:
       selected = np.random.choice(disabled)
       connG[4,selected] = 1 if np.random.rand() < p['prob_enable'] else 0
-    
-    if (np.random.rand() < p['prob_addConn']):
-      connG, innov = self.mutAddConn(connG, nodeG, innov, gen, p) 
     
     child = Ind(connG, nodeG)
     child.birth = gen
@@ -435,47 +431,55 @@ class Ind():
     L = np.r_[np.zeros(nIns), hLay, np.full((nOuts),lastLayer) ]
     nodeKey = np.c_[nodeG[0,order], L] # Assign Layers
 
-    sources = np.random.permutation(len(nodeKey))
-    for src in sources:
-      srcLayer = nodeKey[src,1]
-      dest = np.where(nodeKey[:,1] > srcLayer)[0]
-      
-      # Finding already existing connections:
-      #   ) take all connection genes with this source (connG[1,:])
-      #   ) take the destination of those genes (connG[2,:])
-      #   ) convert to nodeKey index (Gotta be a better numpy way...)   
-      srcIndx = np.where(connG[1,:]==nodeKey[src,0])[0]
-      exist = connG[2,srcIndx]
-      existKey = []
-      for iExist in exist:
-        existKey.append(np.where(nodeKey[:,0]==iExist)[0])
-      dest = np.setdiff1d(dest,existKey) # Remove existing connections
-      
-      # Add a random valid connection
-      np.random.shuffle(dest)
-      if len(dest)>0:  # (there is a valid connection)
-        connNew = np.empty((5,1))
-        connNew[0] = newConnId
-        connNew[1] = nodeKey[src,0]
-        connNew[2] = nodeKey[dest[0],0]
-        connNew[3] = (np.random.rand()-0.5)*2*p['ann_absWCap']
-        connNew[4] = 1 
-        # connG = np.c_[connG,connNew]
+    srcLayers = np.random.permutation(int(lastLayer))
+    connAdded = False
+    # sources = np.random.permutation(len(nodeKey))
+    # for src in sources:
+    for srcLayer in srcLayers:
+      # srcLayer = nodeKey[src,1]
+      sources = np.where(nodeKey[:,1] == srcLayer)[0]
+      sources = np.random.permutation(sources)
+      for src in sources:
+        dest = np.where(nodeKey[:,1] > srcLayer)[0]     
+        # Finding already existing connections:
+        #   ) take all connection genes with this source (connG[1,:])
+        #   ) take the destination of those genes (connG[2,:])
+        #   ) convert to nodeKey index (Gotta be a better numpy way...)   
+        srcIndx = np.where(connG[1,:]==nodeKey[src,0])[0]
+        exist = connG[2,srcIndx]
+        existKey = []
+        for iExist in exist:
+          existKey.append(np.where(nodeKey[:,0]==iExist)[0])
+        dest = np.setdiff1d(dest,existKey) # Remove existing connections
         
-        # deduplicate innovations
-        dup = False
-        connInnov = innov[:,(innov[1,:]==connNew[1]) & (innov[2,:]==connNew[2])]
-        if connInnov.shape[1] != 0:
-          assert connInnov.shape[1] == 1, 'Innovation record corrupted'
-          connNew[0] = connInnov[0,0] # connInnov could be smaller than connNew
-          assert connG[:,connG[0,:]==connNew[0]].shape[1] == 0, 'Innovation record corrupted'
-          dup = True
-        
-        connG = np.c_[connG,connNew]
-        # Record innovation
-        if not dup:
-          newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
-          innov = np.hstack((innov,newInnov[:,None]))
+        # Add a random valid connection
+        np.random.shuffle(dest)
+        if len(dest)>0:  # (there is a valid connection)
+          connNew = np.empty((5,1))
+          connNew[0] = newConnId
+          connNew[1] = nodeKey[src,0]
+          connNew[2] = nodeKey[dest[0],0]
+          connNew[3] = (np.random.rand()-0.5)*2*p['ann_absWCap']
+          connNew[4] = 1 
+          # connG = np.c_[connG,connNew]
+          
+          # deduplicate innovations
+          dup = False
+          connInnov = innov[:,(innov[1,:]==connNew[1]) & (innov[2,:]==connNew[2])]
+          if connInnov.shape[1] != 0:
+            assert connInnov.shape[1] == 1, 'Innovation record corrupted'
+            connNew[0] = connInnov[0,0] # connInnov could be smaller than connNew
+            assert connG[:,connG[0,:]==connNew[0]].shape[1] == 0, 'Innovation record corrupted'
+            dup = True
+          
+          connG = np.c_[connG,connNew]
+          # Record innovation
+          if not dup:
+            newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
+            innov = np.hstack((innov,newInnov[:,None]))
+          connAdded = True
+          break
+      if connAdded:
         break
 
     return connG, innov
@@ -523,25 +527,3 @@ class Ind():
       nodeG[2,mutNode] = int(newActPool[np.random.randint(len(newActPool))])
 
     return nodeG, innov
-  
-  
-  def create_cycle(self, conn1, conn2):
-    assert len(conn2.shape) == 2 and conn2.shape[1] == 1, f'conn2 must be a 2D array {conn2.shape}'
-    src, des = conn2[1,0], conn2[2,0]
-    
-    if src == des:
-      return True
-
-    visited = {des}
-    q = np.array([des])
-    while len(q):
-        l = len(q)
-        for dest in conn1[2,np.isin(conn1[1,:], q)]:
-          if dest not in visited:
-              if dest == src:
-                  return True
-              visited.add(dest)
-              q = np.append(q, dest)
-        q = q[l:]
-
-    return False
