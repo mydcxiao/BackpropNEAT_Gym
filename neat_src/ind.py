@@ -67,7 +67,6 @@ class Ind():
     self.wMat = wMat
     self.aVec = self.node[2,order]
     # self.gradMask = gradMask
-    # assert self.gradMask.shape == self.wMat.shape, 'gradMask shape does not match wMat shape'
     wVec = self.wMat.flatten()
     self.nConn = np.sum(~np.isnan(wVec))
     wVec[np.isnan(wVec)] = 0
@@ -431,55 +430,52 @@ class Ind():
     L = np.r_[np.zeros(nIns), hLay, np.full((nOuts),lastLayer) ]
     nodeKey = np.c_[nodeG[0,order], L] # Assign Layers
 
-    srcLayers = np.random.permutation(int(lastLayer))
-    connAdded = False
-    # sources = np.random.permutation(len(nodeKey))
-    # for src in sources:
-    for srcLayer in srcLayers:
-      # srcLayer = nodeKey[src,1]
-      sources = np.where(nodeKey[:,1] == srcLayer)[0]
-      sources = np.random.permutation(sources)
-      for src in sources:
-        dest = np.where(nodeKey[:,1] > srcLayer)[0]     
-        # Finding already existing connections:
-        #   ) take all connection genes with this source (connG[1,:])
-        #   ) take the destination of those genes (connG[2,:])
-        #   ) convert to nodeKey index (Gotta be a better numpy way...)   
-        srcIndx = np.where(connG[1,:]==nodeKey[src,0])[0]
-        exist = connG[2,srcIndx]
-        existKey = []
-        for iExist in exist:
-          existKey.append(np.where(nodeKey[:,0]==iExist)[0])
-        dest = np.setdiff1d(dest,existKey) # Remove existing connections
+    sources = np.random.permutation(len(nodeKey))
+    for src in sources:
+      srcLayer = nodeKey[src,1]
+      if srcLayer == lastLayer:
+        continue
+      elif srcLayer == 0:
+        dest = np.where(nodeKey[:,1] > srcLayer)[0]
+      else:
+        dest = np.where(nodeKey[:,1] >= srcLayer)[0]     
         
-        # Add a random valid connection
-        np.random.shuffle(dest)
-        if len(dest)>0:  # (there is a valid connection)
-          connNew = np.empty((5,1))
-          connNew[0] = newConnId
-          connNew[1] = nodeKey[src,0]
-          connNew[2] = nodeKey[dest[0],0]
-          connNew[3] = (np.random.rand()-0.5)*2*p['ann_absWCap']
-          connNew[4] = 1 
-          # connG = np.c_[connG,connNew]
-          
-          # deduplicate innovations
-          dup = False
-          connInnov = innov[:,(innov[1,:]==connNew[1]) & (innov[2,:]==connNew[2])]
-          if connInnov.shape[1] != 0:
-            assert connInnov.shape[1] == 1, 'Innovation record corrupted'
-            connNew[0] = connInnov[0,0] # connInnov could be smaller than connNew
-            assert connG[:,connG[0,:]==connNew[0]].shape[1] == 0, 'Innovation record corrupted'
-            dup = True
-          
-          connG = np.c_[connG,connNew]
-          # Record innovation
-          if not dup:
-            newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
-            innov = np.hstack((innov,newInnov[:,None]))
-          connAdded = True
-          break
-      if connAdded:
+      # Finding already existing connections:
+      #   ) take all connection genes with this source (connG[1,:])
+      #   ) take the destination of those genes (connG[2,:])
+      #   ) convert to nodeKey index (Gotta be a better numpy way...)   
+      srcIndx = np.where(connG[1,:]==nodeKey[src,0])[0]
+      exist = connG[2,srcIndx]
+      existKey = []
+      for iExist in exist:
+        existKey.append(np.where(nodeKey[:,0]==iExist)[0])
+      dest = np.setdiff1d(dest,existKey) # Remove existing connections
+      
+      # Add a random valid connection
+      np.random.shuffle(dest)
+      if len(dest)>0:  # (there is a valid connection)
+        connNew = np.empty((5,1))
+        connNew[0] = newConnId
+        connNew[1] = nodeKey[src,0]
+        connNew[2] = nodeKey[dest[0],0]
+        connNew[3] = (np.random.rand()-0.5)*2*p['ann_absWCap']
+        connNew[4] = 1 
+        # connG = np.c_[connG,connNew]
+        
+        # deduplicate innovations
+        dup = False
+        connInnov = innov[:,(innov[1,:]==connNew[1]) & (innov[2,:]==connNew[2])]
+        if connInnov.shape[1] != 0:
+          assert connInnov.shape[1] == 1, 'Innovation record corrupted'
+          connNew[0] = connInnov[0,0] # connInnov could be smaller than connNew
+          assert connG[:,connG[0,:]==connNew[0]].shape[1] == 0, 'Innovation record corrupted'
+          dup = True
+        
+        connG = np.c_[connG,connNew]
+        # Record innovation
+        if not dup:
+          newInnov = np.hstack((connNew[0:3].flatten(), -1, gen))
+          innov = np.hstack((innov,newInnov[:,None]))
         break
 
     return connG, innov
