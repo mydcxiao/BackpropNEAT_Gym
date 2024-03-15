@@ -438,7 +438,7 @@ class Ind():
       elif srcLayer == 0:
         dest = np.where(nodeKey[:,1] > srcLayer)[0]
       else:
-        dest = np.where(nodeKey[:,1] >= srcLayer)[0]     
+        dest = np.where(nodeKey[:,1] >= srcLayer & nodeKey[:,0] != nodeKey[src,0])[0]     
         
       # Finding already existing connections:
       #   ) take all connection genes with this source (connG[1,:])
