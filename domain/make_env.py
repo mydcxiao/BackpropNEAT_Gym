@@ -58,13 +58,9 @@ def make_env(env_name, seed=-1, render_mode=False):
   elif (env_name.startswith("Backprop")):
     from domain.backprop_gym import BackpropClassifyEnv
     if env_name.endswith("XOR"):
-      # from domain.backprop_gym import XOR
-      # trainSet, target  = XOR()
       env = BackpropClassifyEnv(type="XOR", seed=0)
       
     elif env_name.endswith("Spiral"):
-      # from domain.backprop_gym import spiral
-      # trainSet, target  = spiral()
       env = BackpropClassifyEnv(type="spiral", seed=0)
     
     elif env_name.endswith("Circle"):

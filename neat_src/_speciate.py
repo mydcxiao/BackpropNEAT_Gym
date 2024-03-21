@@ -21,7 +21,6 @@ class Species():
     """
     self.seed = seed      # Seed is type Ind
     self.members = [seed] # All inds in species
-    # self.bestInd = seed
     self.bestFit = seed.fitness
     self.lastImp = 0
     self.nOffspring = []
@@ -87,10 +86,6 @@ def assignSpecies(self, species, pop, p):
       species[0].nOffspring = p['popSize']
       species[0].members = []
   else:
-    # Remove existing members
-    # for iSpec in range(len(species)):
-    #   species[iSpec].members = []
-    # Create new seeds
     unspeciated = set(range(len(pop)))
     for iSpec in range(len(species)):
       candidates = []
@@ -102,9 +97,6 @@ def assignSpecies(self, species, pop, p):
       _, new_seed_id = min(candidates, key=lambda x: x[0])
       new_seed = pop[new_seed_id]
       species[iSpec].seed = new_seed
-      # species[iSpec].bestFit = new_seed.fitness
-      # species[iSpec].bestInd = new_seed
-      # species[iSpec].members = [new_seed]
       species[iSpec].members = []
       unspeciated.remove(new_seed_id)
 
@@ -118,11 +110,9 @@ def assignSpecies(self, species, pop, p):
       ref = np.copy(species[iSpec].seed.conn)
       ind = np.copy(pop[i].conn)
       cDist = self.compatDist(ref,ind)
-      # if cDist < p['spec_thresh']:
       candidates.append((cDist, iSpec))
       iSpec += 1
     # find best species to assign to
-    # if len(candidates) > 0:
     min_cDist, best_iSpec = min(candidates, key=lambda x: x[0])
     if min_cDist < p['spec_thresh']:
       pop[i].species = best_iSpec
@@ -183,20 +173,14 @@ def assignOffspring(self, species, pop, p):
         speciesFit[iSpec] = 0
       else:
         speciesFit[iSpec] = np.mean(rankScore[specId==iSpec])
-        # speciesTop[iSpec] = np.max(popFit[specId==iSpec])
         bestId = np.argmax(popFit[specId==iSpec])
         speciesTop[iSpec] = species[iSpec].members[bestId].fitness
-        # DEBUG: assertion is true
-        # assert speciesTop[iSpec] == np.max(popFit[specId==iSpec]), "ERROR: Species top fitness not equal to max fitness in species"
 
         # Did the species improve?
         if speciesTop[iSpec] > species[iSpec].bestFit:
           species[iSpec].bestFit = speciesTop[iSpec]
-          # bestId = np.argmax(popFit[specId==iSpec])
-          # species[iSpec].bestInd = species[iSpec].members[bestId]
           species[iSpec].lastImp = 0
         else:
-          # species[iSpec].bestInd = species[iSpec].members[bestId]
           species[iSpec].lastImp += 1
 
         # Stagnant species don't recieve species fitness
@@ -248,8 +232,6 @@ def compatDist(self, ref, ind):
   longestGenome = max(len(IA),len(IB)) - nInitial
   weightDiff = np.mean(weightDiff)
   geneDiff   = geneDiff   / (1+longestGenome) # this can be bigger than 1 but less than 2
-  # weightDiff = np.mean(weightDiff) / (1 + np.max(weightDiff))
-  # geneDiff = geneDiff / (len(IA) + len(IB) - 2*nInitial)
 
   dist = geneDiff   * self.p['spec_geneCoef']      \
        + weightDiff * self.p['spec_weightCoef']  

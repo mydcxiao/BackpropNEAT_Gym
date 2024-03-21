@@ -43,7 +43,6 @@ def getNodeOrder(nodeG,connG):
   nOuts = len(node[0,node[1,:] == 2])
   
   # Create connection and initial weight matrices
-  # conn[3,conn[4,:]==0] = np.nan # disabled but still connected
   src  = conn[1,:].astype(int)
   dest = conn[2,:].astype(int)
   
@@ -52,11 +51,9 @@ def getNodeOrder(nodeG,connG):
     src[np.where(src==lookup[i])] = i
     dest[np.where(dest==lookup[i])] = i
   
-  # wMat = np.zeros((np.shape(node)[1],np.shape(node)[1]))
   wMat = np.full((np.shape(node)[1],np.shape(node)[1]),np.nan)
   wMat[src,dest] = conn[3,:]
   connMat = wMat[nIns+nOuts:,nIns+nOuts:].copy() #DEBUG copy is necessary?
-  # connMat[connMat!=0] = 1
   connMat[~np.isnan(connMat)] = 1
   connMat[np.isnan(connMat)] = 0
   
@@ -69,7 +66,6 @@ def getNodeOrder(nodeG,connG):
   for i in range(len(connMat)):
     if (len(Q) == 0) or (i >= len(Q)):
       Q = []
-      # return False, False, False # Cycle found, can't sort
       return False, False # Cycle found, can't sort
     edge_out = connMat[Q[i],:]
     edge_in  = edge_in - edge_out # Remove nodes' conns from total
@@ -83,12 +79,7 @@ def getNodeOrder(nodeG,connG):
   Q += nIns+nOuts
   Q = np.r_[lookup[:nIns], Q, lookup[nIns:nIns+nOuts]]
   wMat = wMat[np.ix_(Q,Q)]
-  # gradMask = np.where((wMat == 0) | (np.isnan(wMat)), 0, 1).astype(np.float64) # typecast necessary for comm
-  # gradMask = np.where(np.isnan(wMat), 0, 1).astype(np.float64) # no need of gradMask in new implementation
   
-  # assert gradMask.shape == wMat.shape, "gradMask and wMat should have the same shape"
-  
-  # return Q, wMat, gradMask
   return Q, wMat
 
 def getLayer(wMat):
@@ -112,7 +103,6 @@ def getLayer(wMat):
   wMat = wMat.copy()
   wMat[~np.isnan(wMat)]= 1
   wMat[np.isnan(wMat)] = 0  
-  # wMat[wMat!=0]=1
   nNode = np.shape(wMat)[0]
   layer = np.zeros((nNode))
   while (True): # Loop until sorting is stable

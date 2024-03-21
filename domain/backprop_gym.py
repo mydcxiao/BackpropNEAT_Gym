@@ -36,8 +36,6 @@ class BackpropClassifyEnv(gym.Env):
     if type:
       self._generate_data(type=type, seed=seed, noise=noise, num=num)
     
-    # nInputs = np.shape(self.trainSet)[1]
-    # high = np.array([1.0]*nInputs)
     self.action_space = spaces.Box(np.array(0,dtype=np.float32), \
                                    np.array(1,dtype=np.float32), dtype=np.float32)
     self.observation_space = spaces.Box(np.array(0,dtype=np.float32), \
@@ -68,16 +66,10 @@ class BackpropClassifyEnv(gym.Env):
     Judge Classification, increment to next batch
     action - [batch x output] - softmax output
     '''
-    # y = self.target[self.currIndx]
-
-    # eps = 1e-10
-    # loss = -np.mean(y * np.log(action + eps) + (1 - y) * np.log(1 - action + eps))
-    # reward = -loss
     
     reward = action
 
     if self.t_limit > 0: # We are doing batches
-      # reward = reward * (1/self.t_limit) # average
       self.t += 1
       done = False
       if self.t >= self.t_limit:
@@ -132,8 +124,6 @@ def spiral(num=None, noise=None, seed=None):
     if num == None: num = 200
     if noise == None: noise = 0.35
     r = np.linspace(0,1,num//2, endpoint=False) * 5
-    # r = np.linspace(1,np.e,num//2, endpoint=False)
-    # r = np.log(r) * 6.0
     tp = np.linspace(0,1,num//2, endpoint=False) * -1.75 * 2 * np.pi
     tn = (np.linspace(0,1,num//2, endpoint=False) * -1.75 * 2 * np.pi) + np.pi
     xp = np.array([r*np.sin(tp), r*np.cos(tp)]).T + np.random.uniform(-noise,noise,(num//2,2))

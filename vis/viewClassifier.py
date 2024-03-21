@@ -34,11 +34,7 @@ def viewClassifier(ind, taskName, seed=None):
     G, layer= ind2graph(wMat, nIn, nOut)
     pos = getNodeCoord(G,layer,taskName)
     
-    # TODO: merge graph visualization into one figure
-    # Draw Graph
-    # fig = plt.figure(figsize=(20,10), dpi=100)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(20, 10), dpi=100)
-    # ax1 = fig.add_subplot(122)
     drawEdge(G, pos, wMat, layer, ax1)
     nx.draw_networkx_nodes(G,pos,\
         node_color='lightblue',node_shape='o',\
@@ -55,8 +51,6 @@ def viewClassifier(ind, taskName, seed=None):
         labelleft=False,
         labelbottom=False) # labels along the bottom edge are off
     
-    # ax2 = fig.add_subplot(111)
-    # Prepare mesh and predictions as before
     task.env._generate_data(type=task.env.type, seed=seed)
     X, y = task.env.trainSet, task.env.target
     # Predict logits
@@ -77,28 +71,11 @@ def viewClassifier(ind, taskName, seed=None):
     ax2.contourf(xx, yy, pred_contour, alpha=0.8, levels=np.linspace(0, 1, 11), cmap=plt.cm.coolwarm)
     ax2.scatter(X[pos_idx, 0], X[pos_idx, 1], c='r', marker='o', edgecolors='k')
     ax2.scatter(X[neg_idx, 0], X[neg_idx, 1], c='b', marker='o', edgecolors='k')
-    # train_accuracy = classifier.score(X_train, y_train)
-    # plt.text(xx.min() + 0.3, yy.min() + 0.3, f'Train accuracy = {train_accuracy * 100:.1f}%', fontsize=12)
     ax2.text(xx.min() + 0.3, yy.min() + 0.7, f'Test accuracy = {test_acc * 100:.1f}%', fontsize=12)
     ax2.set_title('2D Classification with Decision Boundary')
     ax2.set_xlabel('X')
     ax2.set_ylabel('Y')
     ax2.set_xlim(xx.min(), xx.max())
     ax2.set_ylim(yy.min(), yy.max())
-
-    # Save the plot to a bytes buffer
-    # buf = io.BytesIO()
-    # plt.savefig(buf, format='png')  # Save the figure to the buffer
-    # buf.seek(0)  # Seek to the start of the stream
-
-    # Use PIL to save the image from the buffer
-    # img = Image.open(buf)
-    # img.save('/mnt/data/classification_plot.png')  # Change this to your desired path and file name
-
-    # Close the buffer
-    # buf.close()
-
-    # Show the plot as well if needed
-    # plt.show()
-    
+ 
     return fig, ax1, ax2
