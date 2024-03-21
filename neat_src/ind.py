@@ -51,7 +51,6 @@ class Ind():
     self.rank    = []
     self.birth   = []
     self.species = []
-    # self.gradMask = []
 
   def nConns(self):
     """Returns number of active connections
@@ -61,20 +60,16 @@ class Ind():
   def express(self):
     """Converts genes to weight matrix and activation vector
     """
-    # order, wMat, gradMask = getNodeOrder(self.node, self.conn)
     order, wMat = getNodeOrder(self.node, self.conn)
     assert order is not False, 'Topological sort failed'
     self.wMat = wMat
     self.aVec = self.node[2,order]
-    # self.gradMask = gradMask
     wVec = self.wMat.flatten()
     self.nConn = np.sum(~np.isnan(wVec))
     wVec[np.isnan(wVec)] = 0
     self.wVec  = wVec
-    # self.nConn = np.sum(wVec!=0)
     
   def impress(self, wVec):
-    # order, _, _ = getNodeOrder(self.node, self.conn)
     order, _ = getNodeOrder(self.node, self.conn)
     assert order is not False, 'Topological sort failed'
     wMat = wVec.reshape(np.shape(self.wMat))
@@ -416,7 +411,6 @@ class Ind():
 
     nIns = len(nodeG[0,nodeG[1,:] == 1]) + len(nodeG[0,nodeG[1,:] == 4])
     nOuts = len(nodeG[0,nodeG[1,:] == 2])
-    # order, wMat, _ = getNodeOrder(nodeG, connG)   # Topological Sort of Network
     order, wMat = getNodeOrder(nodeG, connG)   # Topological Sort of Network
     assert order is not False, 'Topological sort failed'
     hMat = wMat[nIns:-nOuts,nIns:-nOuts]
