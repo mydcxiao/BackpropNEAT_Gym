@@ -18,6 +18,12 @@ Original NEAT paper by Ken Stanley and Risto Miikkulainen: [Evolving Neural Netw
 
 Original WANN paper (based on prettyNEAT) by Adam Gaier and David Ha: [Weight Agnostic Neural Networks](https://arxiv.org/abs/1906.04358)
 
+----------
+
+Note: original [PrettyNEAT](https://github.com/google/brain-tokyo-workshop/tree/master/WANNRelease/prettyNEAT) assumes connection genes are not zero-weighted. It sets zero to no connection and np.nan to disabled connection when doing the training. While saving the final results, it sets no connection and disabled connections to zero. In this implementation, no connection and disabled connections are set to np.nan and saved as np.nan allowing zero-weighted connection genes (it makes sense for some activation function with non-zero output in zero point and more reasonable). Therefore, there will be conflicts when you directly use saved weights from original [PrettyNEAT](https://github.com/google/brain-tokyo-workshop/tree/master/WANNRelease/prettyNEAT). Transfer the zeros in original weights to np.nan and then it will work.
+
+----------
+
 ## Dependencies
 
 Core algorithm tested with:
