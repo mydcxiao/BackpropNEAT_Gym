@@ -50,23 +50,21 @@ Tune weights of produced network topologies with CMA-ES:
 
 ### Using prettyNEAT
 
-Check out the `prettyNeat_demo.ipynb` notebook for example usage.
-
-Algorithm hyperparameters are stored in a .json file. 
-- default parameters specified with `-d`
-- modification with a `-p`
+Algorithm hyperparameters are stored in .json files in [p/](p/) directory. 
+- default parameters for [p/neat_default.json](p/neat_default.json) using `-d`
+- customized parameters .json files specified with `-p`
 - num_workers with `-n`
-- output_exp_prefix `-o`
+- output_name_prefix `-o`
 
-```
-python neat_train.py -d p/neat_default.json -o default -n 8
+```shell
+python neat_train.py -p p/neat_default.json -o default -n 8
 ```
 
 The full list of hyperparameters is explained in [hypkey.txt](p/hypkey.txt)
 
 Individuals are saved as 2D numpy arrays and after training can be retested and viewed with neat_view:
 
-```
+```shell
 python neat_test.py -i log/test_best.out --view True
 ```
 
@@ -77,7 +75,13 @@ see `prettyNeat_demo.ipynb` notebook for example usage.
 
 ### Using neat-python
 
-config settings are in config and config_backprop for slimevolley and backprop classification respectively.
+config settings are in [config](config) and [config_backprop](config_backprop) for slimevolley and backprop classification respectively.
+
+---------
+TODO
+- [ ] fix conflicts of JAX and Python multiprocessing for backprop neat-python.
+
+---------
 
 SlimeVolley:
 
