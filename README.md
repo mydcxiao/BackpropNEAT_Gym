@@ -10,9 +10,9 @@
   </tr>
 </table>
 
-Back-Propagation Neuroevolution of Augmenting Topologies (BackpropNEAT) algorithm in numpy and jax, built for multicore use and OpenAI's gym interface.
+BackPropagation Neuroevolution of Augmenting Topologies (BackpropNEAT) algorithm in numpy and jax, built for multicore use and OpenAI's gym interface.
 
-This repo is based on [PrettyNEAT](https://github.com/google/brain-tokyo-workshop/tree/master/WANNRelease/prettyNEAT) and [neat-python](https://github.com/CodeReclaimers/neat-python). Keeps the original functionalities of *PrettyNEAT* (fixed some bugs though) and added JAX backpropagation support to update weights of the neural network. For neat-python, it's keeped as a submodule with no modification. While inherited class and interface is used in the training scripts for JAX backpropagation support. Additional experiments are added as OpenAI's Gym interface for [slimevolley](https://github.com/hardmaru/slimevolleygym) and simple backprop two-class classification. 
+This repo is based on [PrettyNEAT](https://github.com/google/brain-tokyo-workshop/tree/master/WANNRelease/prettyNEAT) and [neat-python](https://github.com/CodeReclaimers/neat-python). Keeps the original functionalities of *PrettyNEAT* (fixed some bugs though) and added JAX backpropagation support to update weights of the neural network. For *neat-python*, it's keeped as a submodule with no modification. While inherited class and interface is used in the training scripts for JAX backpropagation support. Additional experiments are added as OpenAI's Gym interface for [slimevolley](https://github.com/hardmaru/slimevolleygym) and simple backprop two-class classification. 
 
 Original NEAT paper by Ken Stanley and Risto Miikkulainen: [Evolving Neural Networks Through Augmenting Topologies](http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.28.5457&rep=rep1&type=pdf)
 
@@ -68,19 +68,17 @@ Individuals are saved as 2D numpy arrays and after training can be retested and 
 python neat_test.py -i log/test_best.out --view True
 ```
 
-### PrettyNEAT Data Gathering and Visualization
+BackpropGym has no view implementation, refer to [prettyNeat_demo.ipynb](prettyNeat_demo.ipynb) for visualization.
 
-see `prettyNeat_demo.ipynb` notebook for example usage.
-
+see [prettyNeat_demo.ipynb](prettyNeat_demo.ipynb) notebook for example usage.
 
 ### Using neat-python
 
-config settings are in [config](config) and [config_backprop](config_backprop) for slimevolley and backprop classification respectively.
+Config settings are in [config](config) and [config_backprop](config_backprop) for slimevolley and backprop classification respectively. Refer to [neat-python](https://github.com/CodeReclaimers/neat-python) for configuration details.
 
 ---------
 TODO
 - [ ] fix conflicts of JAX and Python multiprocessing for backprop neat-python.
-
 ---------
 
 SlimeVolley:
@@ -99,7 +97,7 @@ python neat-python_backprop.py
 ```
 *Compatibility problems with python multiprocessing, use single worker now*
 
-### Visualization
+### neat-python Visualization
 
 Refer to neat-python [examples](https://github.com/CodeReclaimers/neat-python/tree/master/examples)
 
