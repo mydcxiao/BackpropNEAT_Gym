@@ -51,13 +51,13 @@ Tune weights of produced network topologies with CMA-ES:
 ### Using prettyNEAT
 
 Algorithm hyperparameters are stored in .json files in [p/](p/) directory. 
-- default parameters for [p/neat_default.json](p/neat_default.json) using `-d`
+- default parameters for [p/default_neat.json](p/default_neat.json) using `-d`
 - customized parameters .json files specified with `-p`
 - num_workers with `-n`
 - output_name_prefix `-o`
 
 ```shell
-python neat_train.py -p p/neat_default.json -o default -n 8
+python neat_train.py -p p/default_neat.json -o default -n 8
 ```
 
 The full list of hyperparameters is explained in [hypkey.txt](p/hypkey.txt)
