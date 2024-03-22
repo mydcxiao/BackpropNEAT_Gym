@@ -57,7 +57,7 @@ Algorithm hyperparameters are stored in .json files in [p/](p/) directory.
 - output_name_prefix `-o`
 
 ```shell
-python neat_train.py -p p/default_neat.json -o default -n 8
+python neat_train.py -d p/default_neat.json -p p/customized.json -o default -n 8
 ```
 
 The full list of hyperparameters is explained in [hypkey.txt](p/hypkey.txt)
