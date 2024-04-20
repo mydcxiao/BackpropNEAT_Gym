@@ -12,7 +12,7 @@ executing==2.0.1
 fonttools==4.49.0
 graphviz==0.20.1
 gym==0.9.6
-idna==3.6
+idna==3.7
 importlib-metadata==7.0.1
 ipykernel==6.29.3
 ipython==8.22.1
